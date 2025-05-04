@@ -1,3 +1,5 @@
+Warning: This is a work in progress.
+
 # G-code Parser
 
 This project is designed to parse G-code files, which are used to control CNC machines and 3D printers. The goal is to provide a simple and efficient way to read and interpret G-code commands.
