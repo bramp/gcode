@@ -3,7 +3,7 @@
 # See https://help.prusa3d.com/article/buddy-firmware-specific-g-code-commands_633112
 
 from gcode.gcode_command import GcodeCommand
-from gcode.gcode_validator import GCodeValidator, arc_move_rule, require_at_least_one
+from gcode.gcode_validator import GCodeValidator
 
 # The G-code validator instance prefers the Prusa Buddy firmware rules.
 validator = GCodeValidator()
@@ -14,6 +14,14 @@ num = (float, int)
 
 # A flag type, that sometimes can have a value, that we should ignore.
 flag_ignore_value = (bool, num)
+
+def require_fields(*field_names: str):
+    """Returns a validator function that ensures the specified fields are present."""
+    def validator(command):
+        missing = [f for f in field_names if f not in command.fields]
+        if missing:
+            raise ValueError(f"{command.command} is missing required field(s): {', '.join(missing)}")
+    return validator
 
 def require_at_least_one(command: GcodeCommand):
     """
@@ -73,7 +81,7 @@ def validate_tool_change_params(command: GcodeCommand):
 # List of all rules, keep the list sorted by command for easier maintenance.
 
 # G0/G1: Move
-validator.register_rule("G0", {}, {
+validator.register_rule("G0", {
     "X": num, # X coordinate (mm)
     "Y": num, # Y coordinate (mm)
     "Z": num, # Z coordinate (mm)
@@ -82,7 +90,7 @@ validator.register_rule("G0", {}, {
     "S": bool # Flag parameter
 }, custom_rule=require_at_least_one)
 
-validator.register_rule("G1", {}, {
+validator.register_rule("G1", {
     "X": num, # X coordinate (mm)
     "Y": num, # Y coordinate (mm)
     "Z": num, # Z coordinate (mm)
@@ -92,7 +100,7 @@ validator.register_rule("G1", {}, {
 }, custom_rule=require_at_least_one)
 
 # G2: Controlled Arc Move (Clockwise)
-validator.register_rule("G2", {}, {
+validator.register_rule("G2", {
     "Z": num, # Z coordinate (mm)
     "E": num, # Extruder position (mm)
     "F": num, # Feedrate (mm/min)
@@ -101,7 +109,7 @@ validator.register_rule("G2", {}, {
 }, custom_rule=arc_move_rule)
 
 # G3: Controlled Arc Move (Counter-Clockwise)
-validator.register_rule("G3", {}, {
+validator.register_rule("G3", {
     "Z": num, # Z coordinate (mm)
     "E": num, # Extruder position (mm)
     "F": num, # Feedrate (mm/min)
@@ -110,56 +118,54 @@ validator.register_rule("G3", {}, {
 }, custom_rule=arc_move_rule)
 
 # G4: Dwell
-validator.register_rule("G4", {}, {
+validator.register_rule("G4", {
     "P": int, # Time in milliseconds
     "S": int  # Time in seconds
 })
 
 # G10: Retract
-validator.register_rule("G10", {}, {
+validator.register_rule("G10", {
     "S": int # Tool number
 })
 
 # G11: Unretract
-validator.register_rule("G11", {}, {
+validator.register_rule("G11", {
     "S": int # Tool number
 })
 
 # G20: Set Units to Inches
-validator.register_rule("G20", {}, {})
+validator.register_rule("G20", {})
 
 # G21: Set Units to Millimeters
-validator.register_rule("G21", {}, {})
+validator.register_rule("G21", {})
 
 # G22: Firmware Retract
-validator.register_rule("G22", {}, {})
+validator.register_rule("G22", {})
 
 # G23: Firmware Recover
-validator.register_rule("G23", {}, {})
+validator.register_rule("G23", {})
 
 # G26: Mesh Validation Pattern
 validator.register_rule("G26", {
     "X": bool, # X axis
     "Y": bool, # Y axis
-    "Z": bool  # Z axis
-}, {
+    "Z": bool, # Z axis
     "P": int,  # Pattern
     "S": int,  # Size
     "T": int,  # Type
     "E": float # Extruder
-})
+}, custom_rule=require_fields("X", "Y", "Z"))
 
 # G27: Park Toolhead
 validator.register_rule("G27", {
     "X": bool, # X axis
     "Y": bool, # Y axis
-    "Z": bool  # Z axis
-}, {
+    "Z": bool, # Z axis
     "P": int # Position
-})
+}, custom_rule=require_fields("X", "Y", "Z"))
 
 # G28: Move to Origin (Home)
-validator.register_rule("G28", {}, {
+validator.register_rule("G28", {
     "X": flag_ignore_value, # Home X axis
     "Y": flag_ignore_value, # Home Y axis
     "Z": flag_ignore_value, # Home Z axis
@@ -177,7 +183,7 @@ validator.register_rule("G28", {}, {
 # G29: Unified Bed Leveling
 # This is a complex command that supports a lot of different features.
 # See https://github.com/prusa3d/Prusa-Firmware-Buddy/blob/818d812f954802903ea0ff39bf44376fb0b35dd2/lib/Marlin/Marlin/src/gcode/bedlevel/ubl/G29.cpp
-validator.register_rule("G29", {}, {
+validator.register_rule("G29", {
     "A": bool,  # Activate UBL
     "P": num,   # Phase
     "B": bool,  # Business Card mode
@@ -206,7 +212,7 @@ validator.register_rule("G29", {}, {
 })
 
 # G30: Single Z-Probe
-validator.register_rule("G30", {}, {
+validator.register_rule("G30", {
     "X": float, # X coordinate
     "Y": float, # Y coordinate
     "Z": float, # Z coordinate
@@ -215,7 +221,7 @@ validator.register_rule("G30", {}, {
 })
 
 # G31: Set or Report Current Probe Status
-validator.register_rule("G31", {}, {
+validator.register_rule("G31", {
     "X": float, # X coordinate
     "Y": float, # Y coordinate
     "Z": float, # Z coordinate
@@ -223,36 +229,36 @@ validator.register_rule("G31", {}, {
 })
 
 # G32: Probe Z and Calibrate Bed
-validator.register_rule("G32", {}, {
+validator.register_rule("G32", {
     "S": int # Start calibration
 })
 
 # G33: Delta Auto Calibration
-validator.register_rule("G33", {}, {
+validator.register_rule("G33", {
     "P": int, # Pattern
     "S": int  # Size
 })
 
 # G34: Set Delta Height
-validator.register_rule("G34", {}, {
+validator.register_rule("G34", {
     "P": int, # Position
     "S": int  # Size
 })
 
 # G35: Tramming Assistant
-validator.register_rule("G35", {}, {
+validator.register_rule("G35", {
     "P": bool, # Pattern
     "S": bool  # Size
 })
 
 # G36: Mesh Bed Leveling
-validator.register_rule("G36", {}, {
+validator.register_rule("G36", {
     "P": bool, # Pattern
     "S": bool  # Size
 })
 
 # G37: Probe Z and Save Mesh
-validator.register_rule("G37", {}, {
+validator.register_rule("G37", {
     "P": bool, # Pattern
     "S": bool  # Size
 })
@@ -261,29 +267,28 @@ validator.register_rule("G37", {}, {
 validator.register_rule("G38", {
     "X": bool, # X axis
     "Y": bool, # Y axis
-    "Z": bool  # Z axis
-}, {
+    "Z": bool, # Z axis
     "P": bool, # Pattern
     "S": bool  # Size
-})
+}, custom_rule=require_fields("X", "Y", "Z"))
 
 # G39: Probe Bed and Save Mesh
-validator.register_rule("G39", {}, {
+validator.register_rule("G39", {
     "P": bool, # Pattern
     "S": bool  # Size
 })
 
 # G40: Cancel Tool Offset
-validator.register_rule("G40", {}, {})
+validator.register_rule("G40", {})
 
 # G80: Cancel Current Motion Mode
-validator.register_rule("G80", {}, {})
+validator.register_rule("G80", {})
 
 # G90: Set to Absolute Positioning
-validator.register_rule("G90", {}, {})
+validator.register_rule("G90", {})
 
 # G92: Set Position
-validator.register_rule("G92", {}, {
+validator.register_rule("G92", {
     "X": num, # X position
     "Y": num, # Y position
     "Z": num, # Z position
@@ -291,10 +296,10 @@ validator.register_rule("G92", {}, {
 })
 
 # M0: Stop or Unconditional stop
-validator.register_rule("M0", {}, {})
+validator.register_rule("M0", {})
 
 # M17: Enable Steppers
-validator.register_rule("M17", {}, {
+validator.register_rule("M17", {
     "X": bool, # Enable X stepper
     "Y": bool, # Enable Y stepper
     "Z": bool, # Enable Z stepper
@@ -308,48 +313,48 @@ validator.register_rule("M17", {}, {
 })
 
 # M18: Disable all stepper motors
-validator.register_rule("M18", {}, {})
+validator.register_rule("M18", {})
 
 # M20: List SD card
-validator.register_rule("M20", {}, {})
+validator.register_rule("M20", {})
 
 # M23: Select SD file
-validator.register_rule("M23", {}, {})
+validator.register_rule("M23", {})
 
 # M24: Start/resume SD print
-validator.register_rule("M24", {}, {})
+validator.register_rule("M24", {})
 
 # M25: Pause SD print
-validator.register_rule("M25", {}, {
+validator.register_rule("M25", {
     "U": bool # Unload filament when paused
 })
 
 # M27: Report SD print status
-validator.register_rule("M27", {}, {})
+validator.register_rule("M27", {})
 
 # M28: Begin write to SD card
-validator.register_rule("M28", {}, {})
+validator.register_rule("M28", {})
 
 # M29: Stop writing to SD card
-validator.register_rule("M29", {}, {})
+validator.register_rule("M29", {})
 
 # M30: Delete a file on the SD card
-validator.register_rule("M30", {}, {})
+validator.register_rule("M30", {})
 
 # M31: Output time since last M109 or SD card start to serial
-validator.register_rule("M31", {}, {})
+validator.register_rule("M31", {})
 
 # M32: Select file and start SD print
-validator.register_rule("M32", {}, {})
+validator.register_rule("M32", {})
 
 # M42: Switch I/O pin
-validator.register_rule("M42", {}, {})
+validator.register_rule("M42", {})
 
 # M46: Show the assigned IP address
-validator.register_rule("M46", {}, {})
+validator.register_rule("M46", {})
 
 # M50: Selftest
-validator.register_rule("M50", {}, {
+validator.register_rule("M50", {
     "X": bool, # X axis test
     "Y": bool, # Y axis test
     "Z": bool, # Z axis test
@@ -358,7 +363,7 @@ validator.register_rule("M50", {}, {
 })
 
 # M73: Set/Get build percentage
-validator.register_rule("M73", {}, {
+validator.register_rule("M73", {
     "P": num, # Percent finished
     "R": num, # Time remaining
     "T": num, # Time to pause
@@ -369,40 +374,40 @@ validator.register_rule("M73", {}, {
 })
 
 # M74: Set weight on print bed
-validator.register_rule("M74", {}, {
+validator.register_rule("M74", {
     "W": num # Set the total mass in grams of everything that is currently sitting on the bed.
 })
 
 # M75: Start print timer
-validator.register_rule("M75", {}, {})
+validator.register_rule("M75", {})
 
 # M76: Pause print timer
-validator.register_rule("M76", {}, {})
+validator.register_rule("M76", {})
 
 # M77: Stop print job timer
-validator.register_rule("M77", {}, {})
+validator.register_rule("M77", {})
 
 # M80: ATX Power On
-validator.register_rule("M80", {}, {
+validator.register_rule("M80", {
     "S": bool # Report the current state and exit
 })
 
 # M81: ATX Power Off
-validator.register_rule("M81", {}, {})
+validator.register_rule("M81", {})
 
 # M82: Set Extruder to Absolute Mode
-validator.register_rule("M82", {}, {})
+validator.register_rule("M82", {})
 
 # M83: Set Extruder to Relative Mode
-validator.register_rule("M83", {}, {})
+validator.register_rule("M83", {})
 
 # M84: Stop Idle Hold
-validator.register_rule("M84", {}, {
+validator.register_rule("M84", {
     "S": bool # Stop idle hold
 })
 
 # M92: Set axis_steps_per_unit
-validator.register_rule("M92", {}, {
+validator.register_rule("M92", {
     "X": num, # Steps per unit for X axis
     "Y": num, # Steps per unit for Y axis
     "Z": num, # Steps per unit for Z axis
@@ -411,22 +416,21 @@ validator.register_rule("M92", {}, {
 
 # M104: Set Extruder Temperature
 validator.register_rule("M104", {
-    "S": num # Target temperature
-}, {
-    "T": num # Tool number
-})
+    "T": num, # Tool number
+    "S": num  # Target temperature
+}, custom_rule=require_fields("S"))
 
 # M106: Turn Fan On
-validator.register_rule("M106", {}, {
+validator.register_rule("M106", {
     "S": num, # Fan speed (0-255)
     "P": num  # Fan number
 })
 
 # M107: Turn Fan Off
-validator.register_rule("M107", {}, {})
+validator.register_rule("M107", {})
 
 # M109: Set Extruder Temperature and Wait
-validator.register_rule("M109", {}, {
+validator.register_rule("M109", {
     "S": num, # Set extruder temperature
     "R": num, # Set extruder temperature (Parameters S and R are treated identically.) # TODO we could normalise this
     "T": num, # Tool number (RepRapFirmware and Klipper), optional
@@ -434,40 +438,42 @@ validator.register_rule("M109", {}, {
 })
 
 # M114: Get Current Position
-validator.register_rule("M114", {}, {})
+validator.register_rule("M114", {})
 
 # M115: Get Firmware Version and Capabilities
-validator.register_rule("M115", {}, {
+validator.register_rule("M115", {
     "V": bool, # Report current installed firmware version
     "U": num # Firmware version provided by G-code to be compared to current one. # TODO this is actually a string
 }, custom_rule=require_at_least_one)
 
-# M140: Set Bed Temperature
+# M140: Set Bed Temperature (Fast)
 validator.register_rule("M140", {
-    "S": num # Target temperature
-}, {})
+    "S": num, # Target temperature
+    "R": num, # Standby temperature
+    "T": num, # Tool number
+}, custom_rule=require_fields("S"))
 
 # M142: Set Cooler Temperature (Fast)
-validator.register_rule("M142", {}, {
+validator.register_rule("M142", {
     "S": num,  # Target temperature
     "T": int,  # Tool number
     "R": num   # Standby temperature
 })
 
 # M155: Automatically send temperatures
-validator.register_rule("M155", {}, {})
+validator.register_rule("M155", {})
 
 # M190: Wait for bed temperature to reach target temp
-validator.register_rule("M190", {}, {
+validator.register_rule("M190", {
     "S": num, # Set bed temperature and wait
     "R": num  # Set bed temperature and wait (Parameters S and R are treated identically.)  # TODO we could normalise this
 })
 
 # M200: Set filament diameter
-validator.register_rule("M200", {}, {})
+validator.register_rule("M200", {})
 
 # M201: Set Maximum Acceleration
-validator.register_rule("M201", {}, {
+validator.register_rule("M201", {
     "X": num, # Acceleration for X axis in units/s^2
     "Y": num, # Acceleration for Y axis in units/s^2
     "Z": num, # Acceleration for Z axis in units/s^2
@@ -475,7 +481,7 @@ validator.register_rule("M201", {}, {
 })
 
 # M203: Set Maximum Feedrate
-validator.register_rule("M203", {}, {
+validator.register_rule("M203", {
     "X": num, # Maximum feedrate for X axis in mm/min
     "Y": num, # Maximum feedrate for Y axis in mm/min
     "Z": num, # Maximum feedrate for Z axis in mm/min
@@ -483,7 +489,7 @@ validator.register_rule("M203", {}, {
 })
 
 # M204: Set Default Acceleration
-validator.register_rule("M204", {}, {
+validator.register_rule("M204", {
     "S": num, # Print and travel acceleration (mm/s^2)
     "P": num, # Print acceleration (mm/s^2)
     "T": num, # Travel acceleration (mm/s^2)
@@ -491,7 +497,7 @@ validator.register_rule("M204", {}, {
 })
 
 # M205: Advanced Settings
-validator.register_rule("M205", {}, {
+validator.register_rule("M205", {
     "S": num, # Minimum feedrate for print moves (unit/s)
     "T": num, # Minimum feedrate for travel moves (units/s)
     "B": num, # Minimum segment time (us)
@@ -502,13 +508,13 @@ validator.register_rule("M205", {}, {
 })
 
 # M206: Offset axes
-validator.register_rule("M206", {}, {})
+validator.register_rule("M206", {})
 
 # M211: Enable, Disable, and/or Report software endstops
-validator.register_rule("M211", {}, {})
+validator.register_rule("M211", {})
 
 # M217: Toolchange Parameters
-validator.register_rule("M217", {}, {
+validator.register_rule("M217", {
     "S": num, # Swap length (mm)
     "E": num, # Purge length (mm)
     "P": num, # Prime speed (mm/min)
@@ -519,18 +525,18 @@ validator.register_rule("M217", {}, {
 })
 
 # M220: Set speed factor override percentage
-validator.register_rule("M220", {}, {
+validator.register_rule("M220", {
     "S": num # Feedrate Percentage
 }, custom_rule=validate_percentage("S"))
 
 # M221: Set extrusion percentage
-validator.register_rule("M221", {}, {
+validator.register_rule("M221", {
     "T": num, # Tool number
     "S": num  # Extrusion rate Percentage
 }, custom_rule=validate_percentage("S"))
 
 # M301: Set PID parameters
-validator.register_rule("M301", {}, {
+validator.register_rule("M301", {
     "P": num, # Proportional
     "I": num, # Integral
     "D": num, # Derivative
@@ -542,23 +548,23 @@ validator.register_rule("M301", {}, {
 })
 
 # M302: Allow cold extrudes
-validator.register_rule("M302", {}, {
+validator.register_rule("M302", {
     "S": num, # Minimum extrude temperature
     "P": int  # Enable (1) or disable (0) cold extrusion
 }, custom_rule=validate_binary("P"))
 
 # M402: Deploy Probe
-validator.register_rule("M402", {}, {})
+validator.register_rule("M402", {})
 
 # M403: Set Filament Type
-validator.register_rule("M403", {}, {
+validator.register_rule("M403", {
     "E": num, # Extruder number
     "F": num, # Filament type
     "S": num  # Filament diameter in mm
 })
 
 # M486: Set Object Name
-validator.register_rule("M486", {}, {
+validator.register_rule("M486", {
     "T": num,  # Total number of objects
     "S": num,  # Object index (0-based, negative for non-objects like purge towers)
     "A": str,  # Object name (RepRapFirmware)
@@ -568,13 +574,13 @@ validator.register_rule("M486", {}, {
 })
 
 # M552: Set IP Address
-validator.register_rule("M552", {}, {
+validator.register_rule("M552", {
     "P": str, # IP address
     "S": bool # Enable/disable network
 })
 
 # M555: Set Bounding Box
-validator.register_rule("M555", {}, {
+validator.register_rule("M555", {
     "X": num, # Minimum X coordinate
     "Y": num, # Minimum Y coordinate of model
     "W": num, # X size of model (max - min X coordinate)
@@ -582,7 +588,7 @@ validator.register_rule("M555", {}, {
 })
 
 # M569: Enable StealthChop
-validator.register_rule("M569", {}, {
+validator.register_rule("M569", {
     "S": int,  # Enable or disable StealthChop (1 or 0)
     "X": bool, # Target X axis
     "Y": bool, # Target Y axis
@@ -591,28 +597,28 @@ validator.register_rule("M569", {}, {
 }, custom_rule=lambda command: "S" not in command.fields or command.fields["S"] in [0, 1])
 
 # M572: Set or report extruder pressure advance
-validator.register_rule("M572", {}, {
+validator.register_rule("M572", {
     "D": int,  # Extruder number
     "S": num,  # Pressure advance value (0.0 to 1.0 seconds, 0 disables)
     "W": num   # Time range for velocity calculation (0.0 to 0.2 seconds, default 0.04)
 })
 
 # M701: Load Filament
-validator.register_rule("M701", {}, {
+validator.register_rule("M701", {
     "T": num, # Tool number
     "Z": num, # Z lift height
     "L": num  # Load length
 })
 
 # M702: Unload Filament
-validator.register_rule("M702", {}, {
+validator.register_rule("M702", {
     "T": num, # Tool number
     "Z": num, # Z lift height
     "U": num  # Unload length
 })
 
 # M862.1: Check nozzle diameter
-validator.register_rule("M862.1", {}, {
+validator.register_rule("M862.1", {
     "P": num, # Nozzle diameter in mm (typically 0.25, 0.40 or 0.60)
     "Q": bool, # Current nozzle diameter
     "T": num,  # Tool number
@@ -624,37 +630,37 @@ validator.register_rule("M862.1", {}, {
 ])
 
 # M862.3: Check Model ID
-validator.register_rule("M862.3", {}, {
+validator.register_rule("M862.3", {
     "P": num, # Model ID
     "T": num  # Tool number
 })
 
 # M862.4: Check Firmware Version
-validator.register_rule("M862.4", {}, {
+validator.register_rule("M862.4", {
     "P": num, # Firmware version
     "T": num  # Tool number
 })
 
 # M862.5: Check G-code level
-validator.register_rule("M862.5", {}, {
+validator.register_rule("M862.5", {
     "P": int, # Gcode level
     "Q": num  # Current Gcode level
 })
 
 # M862.6: Check Firmware Version
-validator.register_rule("M862.6", {}, {
+validator.register_rule("M862.6", {
     "P": str, # Firmware version
     "T": num  # Tool number
 })
 
 # M900: Linear Advance
-validator.register_rule("M900", {}, {
+validator.register_rule("M900", {
     "K": num, # Linear advance factor
     "T": num  # Tool number
 })
 
 # M907: Set Motor Current
-validator.register_rule("M907", {}, {
+validator.register_rule("M907", {
     "X": num, # X motor current in mA
     "Y": num, # Y motor current in mA
     "Z": num, # Z motor current in mA
@@ -674,7 +680,7 @@ validator.register_rule("M907", {}, {
 # T0, T1, T2, T3, T4: Select Tool
 for t in range(5):
     # T{t}: Select Tool {t}}
-    validator.register_rule(f"T{t}", {}, {
+    validator.register_rule(f"T{t}", {
         "F": num,  # Feedrate (mm/min)
         "S": int,  # Don't move the tool in XY after change (0 or 1)
         "M": int,  # Use tool mapping (default is yes) (0 or 1)
@@ -685,7 +691,7 @@ for t in range(5):
 # P0, P1, P2, P3, P4: Tool park
 for t in range(5):
     # P{t}: Tool park {t}}
-    validator.register_rule(f"P{t}", {}, {
+    validator.register_rule(f"P{t}", {
         "F": num,  # Feedrate (mm/min)
         "S": int,  # Don't move the tool in XY after change (0 or 1)
         "M": int,  # Use tool mapping (default is yes) (0 or 1)
