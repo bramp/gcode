@@ -10,14 +10,14 @@ class GCodeValidator:
                             Example: {"X": float, "Y": (float, int)}
             optional (dict): A dictionary of optional fields and their expected types.
                             Example: {"Z": float, "E": float, "F": int}
-            custom_rule (callable): A custom validation function for additional rules specific
-                                   to the command. The function should accept a `GcodeCommand`
-                                   object and raise a `ValueError` if validation fails.
+            custom_rules (list): A list of custom validation functions for additional rules specific
+                               to the command. Each function should accept a `GcodeCommand`
+                               object and raise a `ValueError` if validation fails.
         """
-        def __init__(self, required: dict, optional: dict, custom_rule=None):
+        def __init__(self, required: dict, optional: dict, custom_rules=None):
             self.required = required
             self.optional = optional
-            self.custom_rule = custom_rule
+            self.custom_rules = custom_rules or []
 
     def __init__(self):
         self.rules = {}
@@ -30,7 +30,7 @@ class GCodeValidator:
             command (str): The G-code command (e.g., G0, G1).
             required (dict): Dictionary of required fields and their types.
             optional (dict): Dictionary of optional fields and their types.
-            custom_rule (callable, optional): Custom validation function.
+            custom_rule (callable or list[callable], optional): Custom validation function(s).
         """
         if command in self.rules:
             raise ValueError(f"Rule for command '{command}' already exists")
@@ -41,15 +41,26 @@ class GCodeValidator:
             raise TypeError(f"Required fields {required} must be a dictionary")
         if not isinstance(optional, dict):
             raise TypeError(f"Optional fields {optional} must be a dictionary")
-        if custom_rule is not None and not callable(custom_rule):
-            raise TypeError(f"Custom rule {custom_rule} must be a callable")
+        
+        # Convert single rule to list if needed
+        custom_rules = []
+        if custom_rule is not None:
+            if callable(custom_rule):
+                custom_rules = [custom_rule]
+            elif isinstance(custom_rule, list):
+                for rule in custom_rule:
+                    if not callable(rule):
+                        raise TypeError(f"Custom rule {rule} must be a callable")
+                custom_rules = custom_rule
+            else:
+                raise TypeError(f"Custom rule {custom_rule} must be a callable or list of callables")
 
         # Ensure that required and optional fields don't overlap
         for field in required:
             if field in optional:
                 raise ValueError(f"Field '{field}' cannot be both required and optional")
 
-        self.rules[command] = self._GCodeRule(required, optional, custom_rule)
+        self.rules[command] = self._GCodeRule(required, optional, custom_rules)
 
     def validate(self, command: GcodeCommand):
         """
@@ -84,9 +95,9 @@ class GCodeValidator:
             elif field not in rule.required:
                 raise ValueError(f"{command.command} has unsupported field: {field}")
 
-        # Apply custom rule if provided
-        if rule.custom_rule:
-            rule.custom_rule(command)
+        # Apply custom rules if provided
+        for custom_rule in rule.custom_rules:
+            custom_rule(command)
 
     def _is_valid_type(self, value, expected_type):
         """

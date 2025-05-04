@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class GcodeCommand:
@@ -9,10 +9,12 @@ class GcodeCommand:
         command (str): The G-code command (e.g., G1, M104).
         fields (Dict[str, Any]): The fields associated with the command. The
         values may be one of int, float, str, or bool.
+        error (str, optional): If present, contains a validation error message.
     """
-    def __init__(self, command: str, fields: Dict[str, Any]):
+    def __init__(self, command: str, fields: Dict[str, Any], error: Optional[str] = None):
         self.command = command
         self.fields = fields
+        self.error = error
 
     def _field_repr(self, key: str, value: Any) -> str:
         """

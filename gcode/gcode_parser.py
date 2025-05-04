@@ -5,14 +5,17 @@ from gcode.gcode_command import GcodeCommand
 from gcode.gcode_validator_rules import default_validator
 
 class GCodeParser:
-    def __init__(self, validator=None):
+    def __init__(self, validator=None, strict_mode: bool = True):
         """
         Initialize the GCodeParser with a validator. If no validator is provided, use the default_validator.
 
         Args:
             validator (callable, optional): A validator function to validate G-code commands. Defaults to default_validator.
+            strict_mode (bool, optional): If True, validation errors will raise ValueError. If False, validation errors
+                                        will be stored in the command's error field. Defaults to True.
         """
         self.validator = validator or default_validator
+        self.strict_mode = strict_mode
 
     def parse_line(self, line: str) -> Optional[GcodeCommand]:
         """
@@ -43,13 +46,15 @@ class GCodeParser:
 
         # Extract fields starting after the command
         fields = {}
-        for field, value in re.findall(r'(?<![A-Za-z])([A-Z])([-+]?[0-9]*\.?[0-9]+)', line[len(match.group(0)):]):
+        for field, value in re.findall(r'(?<![A-Za-z])([A-Z])([-+]?[0-9]*\.?[0-9]+|"[^"]*")', line[len(match.group(0)):]):
             if field in fields:
                 raise ValueError(f"Duplicate field '{field}'")
             if value == '':
                 # If the field is present but has no value, treat it as a flag
                 fields[field] = True
-            # TODO Check if value is string
+            elif value.startswith('"') and value.endswith('"'):
+                # Handle string values
+                fields[field] = value[1:-1]  # Remove quotes
             elif '.' in value:
                 fields[field] = float(value)
             else:
@@ -60,11 +65,13 @@ class GCodeParser:
             self.validator.validate(command)
         # Catch all error, and re-raise it with the command for better debugging
         except Exception as e:
-            raise ValueError(f"'{command}': {e}") from e
+            if self.strict_mode:
+                raise ValueError(f"'{command}': {e}") from e
+            command.error = str(e)
 
         return command
 
-    def parse_stream(self, stream: TextIO, to_list: bool = False):
+    def parse_stream(self, stream: TextIO):
         """
         Parse a stream of G-code line by line.
 

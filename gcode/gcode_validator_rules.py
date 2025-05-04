@@ -2,6 +2,7 @@
 # See https://reprap.org/wiki/G-code
 # See https://help.prusa3d.com/article/buddy-firmware-specific-g-code-commands_633112
 
+from gcode.gcode_command import GcodeCommand
 from gcode.gcode_validator import GCodeValidator, arc_move_rule, require_at_least_one
 
 # The G-code validator instance prefers the Prusa Buddy firmware rules.
@@ -9,7 +10,65 @@ validator = GCodeValidator()
 default_validator = validator
 
 # A number type that is either float or int.
-num = (float, int) # TODO maybe change this to a union int | float.
+num = (float, int)
+
+# A flag type, that sometimes can have a value, that we should ignore.
+flag_ignore_value = (bool, num)
+
+def require_at_least_one(command: GcodeCommand):
+    """
+    Checks at least one of the field is present in the command.
+
+    Args:
+        command (GcodeCommand): The GcodeCommand instance to check.
+
+    Returns:
+        bool: True if at least one required field is present, otherwise raises ValueError.
+    """
+    if len(command.fields) == 0:
+        raise ValueError(f"{command.command} requires at least one of the fields, but none were provided.")
+
+    return True
+
+def arc_move_rule(command: GcodeCommand):
+    """Ensure either I/J or R is present for G2 and G3"""
+    if not ("I" in command.fields and "J" in command.fields) and "R" not in command.fields:
+        raise ValueError(f"{command.command} requires either I and J fields or an R field.")
+          
+# Helper function to validate percentage values (0-100)
+def validate_percentage(*field_names: str):
+    """Returns a validator function that ensures fields are percentages between 0 and 100."""
+    def validator(command):
+        for field_name in field_names:
+            if field_name in command.fields:
+                if command.fields[field_name] < 0 or command.fields[field_name] > 100:
+                    raise ValueError(f"{command.command} {field_name} must be between 0 and 100.")
+    return validator
+
+# Helper function to ensure fields are mutually exclusive
+def mutually_exclusive(*field_names: str):
+    """Returns a validator function that ensures only one of the specified fields is present."""
+    def validator(command):
+        present_fields = [f for f in field_names if f in command.fields]
+        if len(present_fields) > 1:
+            raise ValueError(f"{command.command} fields {', '.join(present_fields)} are mutually exclusive.")
+    return validator
+
+# Helper function to validate binary values (0 or 1)
+def validate_binary(*field_names: str):
+    """Returns a validator function that ensures fields are either 0 or 1."""
+    def validator(command):
+        for field in field_names:
+            if field in command.fields and command.fields[field] not in [0, 1]:
+                raise ValueError(f"{command.command} field {field} must be either 0 or 1.")
+    return validator
+
+# Helper function to validate tool change parameters
+def validate_tool_change_params(command: GcodeCommand):
+    """Validates tool change parameters have correct values."""
+    validate_binary("S", "M", "D")(command)
+    if "L" in command.fields and command.fields["L"] not in [0, 1, 2]:
+        raise ValueError(f"{command.command} L must be 0, 1, or 2")
 
 # List of all rules, keep the list sorted by command for easier maintenance.
 
@@ -68,24 +127,49 @@ validator.register_rule("G11", {}, {
 
 # G28: Move to Origin (Home)
 validator.register_rule("G28", {}, {
-    "X": bool, # Home X axis
-    "Y": bool, # Home Y axis
-    "Z": bool, # Home Z axis
-    "I": bool, # Home I axis
-    "L": bool, # Home L axis
-    "N": bool, # Home N axis
-    "O": bool, # Home O axis
-    "P": bool, # Home P axis
-    "R": float, # Home R axis
-    "S": bool, # Home S axis
-    "W": bool, # Home W axis
-    "C": bool  # Home C axis
+    "X": flag_ignore_value, # Home X axis
+    "Y": flag_ignore_value, # Home Y axis
+    "Z": flag_ignore_value, # Home Z axis
+    "I": bool, # Imprecise: do not perform precise refinement
+    "L": bool, # Force leveling state ON (if possible)
+    "N": bool, # No-change mode (do not change any motion setting such as feedrate)
+    "O": bool, # Home only if the position is not known and trusted
+    "P": bool, # Do not check print sheet presence
+    "R": float, # <linear> Raise by n mm/inches before homing
+    "S": bool, # Simulated homing only in MARLIN_DEV_MODE
+    "W": bool, # Suppress mesh bed leveling if `X`, `Y` or `Z` are not provided
+    "C": bool  # Calibrate X and Y origin (home) - Only on MK3/s
 })
 
-# G29: Detailed Z-Probe
+# G29: Unified Bed Leveling
+# This is a complex command that supports a lot of different features.
+# See https://github.com/prusa3d/Prusa-Firmware-Buddy/blob/818d812f954802903ea0ff39bf44376fb0b35dd2/lib/Marlin/Marlin/src/gcode/bedlevel/ubl/G29.cpp
 validator.register_rule("G29", {}, {
-    "S": int, # Start mesh bed leveling
-    "P": int  # Probe points
+    "A": bool,  # Activate UBL
+    "P": num,   # Phase
+    "B": bool,  # Business Card mode
+    "C": bool,  # Continue with the closest mesh point
+    "D": bool,  # Disable UBL
+    "E": bool,  # Edit the mesh values
+    "F": num,   # Fade Height
+    "H": num,   # Height Value
+    "I": bool,  # Invalidate a mesh point
+    "J": int,   # Grid Size
+    "K": bool,  # Kompare Mesh Values
+    "L": bool,  # Load Mesh
+    "M": bool,  # Manual Edit
+    "N": bool,  # Next Mesh Point
+    "O": bool,  # Fine Tune (Offset) Mesh
+    "Q": bool,  # Query Mesh
+    "R": bool,  # Restore Mesh
+    "S": bool,  # Save Mesh
+    "T": bool,  # Three Point Probe
+    "U": bool,  # Unlevel the Bed
+    "V": int,   # Version and Info
+    "W": int,   # Requires UBL_DEVEL_DEBUGGING. What? What is my Mesh?
+    "X": num,   # X Coordinate
+    "Y": num,   # Y Coordinate
+    "Z": num    # Z Offset
 })
 
 # G20: Set Units to Inches
@@ -192,16 +276,42 @@ validator.register_rule("G39", {}, {
 # G40: Cancel Tool Offset
 validator.register_rule("G40", {}, {})
 
+# G80: Cancel Current Motion Mode
+validator.register_rule("G80", {}, {})
+
 # G90: Set to Absolute Positioning
 validator.register_rule("G90", {}, {})
 
 # G92: Set Position
 validator.register_rule("G92", {}, {
-    "X": bool, # X position
-    "Y": bool, # Y position
-    "Z": bool, # Z position
-    "E": bool  # Extruder position
+    "X": num, # X position
+    "Y": num, # Y position
+    "Z": num, # Z position
+    "E": num  # Extruder position
 })
+
+# T0, T1, T2, T3, T4: Select Tool
+for t in range(5):
+    # T{t}: Select Tool {t}}
+    validator.register_rule(f"T{t}", {}, {
+        "F": num,  # Feedrate (mm/min)
+        "S": int,  # Don't move the tool in XY after change (0 or 1)
+        "M": int,  # Use tool mapping (default is yes) (0 or 1)
+        "L": int,  # Z Lift settings: 0=no lift, 1=lift by max MBL diff, 2=full lift(default)
+        "D": int   # Return in Z after lift: 0=do not return, 1=normal return
+    }, custom_rule=validate_tool_change_params)
+
+# P0, P1, P2, P3, P4: Tool park
+for t in range(5):
+    # P{t}: Tool park {t}}
+    validator.register_rule(f"P{t}", {}, {
+        "F": num,  # Feedrate (mm/min)
+        "S": int,  # Don't move the tool in XY after change (0 or 1)
+        "M": int,  # Use tool mapping (default is yes) (0 or 1)
+        "L": int,  # Z Lift settings: 0=no lift, 1=lift by max MBL diff, 2=full lift(default)
+        "D": int   # Return in Z after lift: 0=do not return, 1=normal return
+    }, custom_rule=validate_tool_change_params)
+
 
 # M73: Set Print Progress
 validator.register_rule("M73", {}, {
@@ -217,33 +327,105 @@ validator.register_rule("M73", {}, {
 # M82: Set Extruder to Absolute Mode
 validator.register_rule("M82", {}, {})
 
+# M83: Set Extruder to Relative Mode
+validator.register_rule("M83", {}, {})
+
 # M84: Stop Idle Hold
 validator.register_rule("M84", {}, {
     "S": bool # Stop idle hold
 })
 
+# M92: Set axis_steps_per_unit
+validator.register_rule("M92", {}, {
+    "X": num, # Steps per unit for X axis
+    "Y": num, # Steps per unit for Y axis
+    "Z": num, # Steps per unit for Z axis
+    "E": num  # Steps per unit for extruder
+})
+
 # M104: Set Extruder Temperature
 validator.register_rule("M104", {
-    "S": bool # Target temperature
+    "S": num # Target temperature
 }, {
-    "T": bool # Tool number
+    "T": num # Tool number
 })
 
 # M106: Turn Fan On
-validator.register_rule("M106", {
-    "S": bool # Fan speed
-}, {
-    "P": bool # Fan number
+validator.register_rule("M106", {}, {
+    "S": num, # Fan speed (0-255)
+    "P": num  # Fan number
 })
 
 # M107: Turn Fan Off
 validator.register_rule("M107", {}, {})
 
+# M140: Set Bed Temperature
+validator.register_rule("M140", {
+    "S": num # Target temperature
+}, {})
+
 # M109: Set Extruder Temperature and Wait
-validator.register_rule("M109", {
-    "S": bool # Target temperature
-}, {
-    "T": bool # Tool number
+validator.register_rule("M109", {}, {
+    "S": num, # Set extruder temperature
+    "R": num, # Set extruder temperature (Parameters S and R are treated identically.) # TODO we could normalise this
+    "T": num, # Tool number (RepRapFirmware and Klipper), optional
+    "B": num, # Set max. extruder temperature, while S is min. temperature. Not active in default, only if AUTOTEMP is defined in source code.
+})
+
+# M190: Wait for bed temperature to reach target temp
+validator.register_rule("M190", {}, {
+    "S": num, # Set bed temperature and wait
+    "R": num  # Set bed temperature and wait (Parameters S and R are treated identically.)  # TODO we could normalise this
+})
+
+# M862.1: Check nozzle diameter
+validator.register_rule("M862.1", {}, {
+    "P": num, # Nozzle diameter in mm (typically 0.25, 0.40 or 0.60)
+    "Q": bool, # Current nozzle diameter
+    "T": num,  # Tool number
+    "A": int, # Abrasive resistent / hardened nozzle
+    "F": int, # High-Flow nozzle
+}, custom_rule=[
+    mutually_exclusive("P", "Q"),
+    validate_binary("A", "F")
+])
+
+# M900: Linear Advance
+validator.register_rule("M900", {}, {
+    "K": num, # Linear advance factor
+    "T": num  # Tool number
+})
+
+# M907: Set Motor Current
+validator.register_rule("M907", {}, {
+    "X": num, # X motor current in mA
+    "Y": num, # Y motor current in mA
+    "Z": num, # Z motor current in mA
+    "E": num, # E motor current in mA
+    "I": num, # I motor current in mA
+    "J": num, # J motor current in mA
+    "K": num, # K motor current in mA
+    "U": num, # U motor current in mA
+    "V": num, # V motor current in mA
+    "W": num, # W motor current in mA
+    "A": num, # All motor current in mA
+    "B": num, # Second extruder current in mA
+    "C": num, # Third extruder current in mA
+    "D": num  # Fourth extruder current in mA
+})
+
+# M17: Enable Steppers
+validator.register_rule("M17", {}, {
+    "X": bool, # Enable X stepper
+    "Y": bool, # Enable Y stepper
+    "Z": bool, # Enable Z stepper
+    "E": bool, # Enable E stepper
+    "I": bool, # Enable I stepper
+    "J": bool, # Enable J stepper
+    "K": bool, # Enable K stepper
+    "U": bool, # Enable U stepper
+    "V": bool, # Enable V stepper
+    "W": bool  # Enable W stepper
 })
 
 # M201: Set Maximum Acceleration
@@ -264,25 +446,172 @@ validator.register_rule("M203", {}, {
 
 # M204: Set Default Acceleration
 validator.register_rule("M204", {}, {
-    "P": num, # Acceleration for printing moves in units/s^2
-    "T": num, # Acceleration for travel moves in units/s^2
-    "R": num  # Acceleration for retract moves in units/s^2
+    "S": num, # Print and travel acceleration (mm/s^2)
+    "P": num, # Print acceleration (mm/s^2)
+    "T": num, # Travel acceleration (mm/s^2)
+    "R": num  # Retract acceleration (mm/s^2)
+})
+
+# M217: Toolchange Parameters
+validator.register_rule("M217", {}, {
+    "S": num, # Swap length (mm)
+    "E": num, # Purge length (mm)
+    "P": num, # Prime speed (mm/min)
+    "R": num, # Retract speed (mm/min)
+    "X": num, # Park X position (mm)
+    "Y": num, # Park Y position (mm)
+    "Z": num  # Z Raise (mm)
 })
 
 # M205: Advanced Settings
 validator.register_rule("M205", {}, {
-    "X": num, # Maximum XY jerk
-    "Z": num, # Maximum Z jerk
-    "E": num, # Maximum E jerk
-    "B": num, # Minimum segment time
-    "S": num, # Minimum planner speed
-    "T": num  # Travel minimum planner speed
+    "S": num, # Minimum feedrate for print moves (unit/s)
+    "T": num, # Minimum feedrate for travel moves (units/s)
+    "B": num, # Minimum segment time (us)
+    "X": num, # Maximum X jerk (units/s)
+    "Y": num, # Maximum Y jerk (units/s)
+    "Z": num, # Maximum Z jerk (units/s)
+    "E": num  # Maximum E jerk (units/s)
 })
 
-# M569: Set Motor Direction and Enable
+# M569: Enable StealthChop
 validator.register_rule("M569", {}, {
-    "S": bool, # Enable/disable motor
-    "T": bool, # Tool number
-    "E": bool  # Extruder number
+    "S": int,  # Enable or disable StealthChop (1 or 0)
+    "X": bool, # Target X axis
+    "Y": bool, # Target Y axis
+    "Z": bool, # Target Z axis
+    "E": bool  # Target extruder
+}, custom_rule=lambda command: "S" not in command.fields or command.fields["S"] in [0, 1])
+
+# M220: Set speed factor override percentage
+validator.register_rule("M220", {}, {
+    "S": num # Feedrate Percentage
+}, custom_rule=validate_percentage("S"))
+
+# M221: Set extrusion percentage
+validator.register_rule("M221", {}, {
+    "T": num, # Tool number
+    "S": num  # Extrusion rate Percentage
+}, custom_rule=validate_percentage("S"))
+
+# M114: Get Current Position
+validator.register_rule("M114", {}, {})
+
+# M115: Get Firmware Version and Capabilities
+validator.register_rule("M115", {}, {
+    "V": bool, # Report current installed firmware version
+    "U": num # Firmware version provided by G-code to be compared to current one. # TODO this is actually a string
+}, custom_rule=require_at_least_one)
+
+# M402: Deploy Probe
+validator.register_rule("M402", {}, {})
+
+# M403: Set Filament Type
+validator.register_rule("M403", {}, {
+    "E": num, # Extruder number
+    "F": num, # Filament type
+    "S": num  # Filament diameter in mm
 })
 
+# M486: Set Object Name
+validator.register_rule("M486", {}, {
+    "T": num,  # Total number of objects
+    "S": num,  # Object index (0-based, negative for non-objects like purge towers)
+    "A": str,  # Object name (RepRapFirmware)
+    "P": num,  # Cancel object with index
+    "U": num,  # Un-cancel object with index
+    "C": bool  # Cancel current object
+})
+
+# M701: Load Filament
+validator.register_rule("M701", {}, {
+    "T": num, # Tool number
+    "Z": num, # Z lift height
+    "L": num  # Load length
+})
+
+# M702: Unload Filament
+validator.register_rule("M702", {}, {
+    "T": num, # Tool number
+    "Z": num, # Z lift height
+    "U": num  # Unload length
+})
+
+# M862.3: Check Model ID
+validator.register_rule("M862.3", {}, {
+    "P": num, # Model ID
+    "T": num  # Tool number
+})
+
+# M862.4: Check Firmware Version
+validator.register_rule("M862.4", {}, {
+    "P": num, # Firmware version
+    "T": num  # Tool number
+})
+
+# M862.5: Check G-code level
+validator.register_rule("M862.5", {}, {
+    "P": int, # Gcode level
+    "Q": num  # Current Gcode level
+})
+
+# M862.6: Check Firmware Version
+validator.register_rule("M862.6", {}, {
+    "P": str, # Firmware version
+    "T": num  # Tool number
+})
+
+# M552: Set IP Address
+validator.register_rule("M552", {}, {
+    "P": str, # IP address
+    "S": bool # Enable/disable network
+})
+
+# M555:  Set Bounding Box
+# TODO on RepRapFirmware this means Set compatibility
+#validator.register_rule("M555", {}, {
+#    "P": int  # Emulation type
+#})
+
+# M555: Set Bounding Box - Buddy firmware only
+validator.register_rule("M555", {}, {
+    "X": num, # Minimum X coordinate
+    "Y": num, # Minimum Y coordinate of model
+    "W": num, # X size of model (max - min X coordinate)
+    "H": num  # Y size of model (max - min Y coordinate)
+})
+
+# M301: Set PID parameters
+validator.register_rule("M301", {}, {
+    "P": num, # Proportional
+    "I": num, # Integral
+    "D": num, # Derivative
+    "C": num, # Cycle time
+    "L": num, # Min power
+    "O": num, # Bias
+    "F": num, # PWM frequency
+    "T": num  # Tool number
+})
+
+# M302: Allow cold extrudes
+validator.register_rule("M302", {}, {
+    "S": num, # Minimum extrude temperature
+    "P": int  # Enable (1) or disable (0) cold extrusion
+}, custom_rule=validate_binary("P"))
+
+# M572: Set or report extruder pressure advance
+validator.register_rule("M572", {}, {
+    "D": int,  # Extruder number
+    "S": num,  # Pressure advance value (0.0 to 1.0 seconds, 0 disables)
+    "W": num   # Time range for velocity calculation (0.0 to 0.2 seconds, default 0.04)
+})
+
+# M142: Set Cooler Temperature (Fast)
+validator.register_rule("M142", {}, {
+    "S": num,  # Target temperature
+    "T": int,  # Tool number
+    "R": num   # Standby temperature
+})
+
+# M77: Stop print job timer
+validator.register_rule("M77", {}, {})
