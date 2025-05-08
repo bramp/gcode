@@ -282,10 +282,10 @@ class MeatUnpacker:
         self._packing = False
         self._omit_spaces = False
     
-    def _code_to_char(self, code: int, omit_spaces: bool = False) -> str:
+    def _code_to_char(self, code: int) -> str:
         """Convert a 4-bit code to its character."""
         if code == 0x0B:
-            return 'E' if omit_spaces else ' '
+            return 'E' if self._omit_spaces else ' '
         return _CODE_TO_CHAR.get(code)
     
     def decompress(self, data: bytes) -> bytes:
@@ -353,7 +353,7 @@ class MeatUnpacker:
                     result.append(data[i])
                     i += 1
             else:
-                if (char := self._code_to_char(code1, self._omit_spaces)) is not None:
+                if (char := self._code_to_char(code1)) is not None:
                     result.append(ord(char))
             
             # Handle second character
@@ -362,7 +362,7 @@ class MeatUnpacker:
                     result.append(data[i])
                     i += 1
             else:
-                if (char := self._code_to_char(code2, self._omit_spaces)) is not None:
+                if (char := self._code_to_char(code2)) is not None:
                     result.append(ord(char))
         
         return bytes(result)

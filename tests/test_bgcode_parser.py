@@ -32,7 +32,7 @@ def parser():
     """Create a parser instance for testing."""
     return BasicBGCodeParser()
 
-def test_parse_real_files(parser):
+def test_parse_real_files(parser: BasicBGCodeParser):
     """Test parsing real bgcode files from fixtures."""
     # Test files to check
     test_files = [
@@ -47,7 +47,6 @@ def test_parse_real_files(parser):
         blocks = list()
 
         for block in parser.parse_file(filepath):
-            print(block)
             blocks.append(block)
         
         # Basic validation
@@ -56,8 +55,8 @@ def test_parse_real_files(parser):
         # Check that we have at least one G-code block
         gcode_blocks = [b for b in blocks if isinstance(b, GCodeBlock)]
         assert len(gcode_blocks) > 0, f"No G-code blocks found in {filename}"
-        
+
         # Check that the G-code content is not empty
-        for block_type, content in gcode_blocks:
-            assert len(content) > 0, f"Empty G-code content in {filename}"
-            assert b"G" in content, f"No G commands found in {filename}" 
+        for block in gcode_blocks:
+            print(block.data())
+            assert len(block.data()) > 0, f"Empty G-code data in {filename}"

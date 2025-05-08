@@ -47,7 +47,7 @@ issue for any suggestions or improvements.
 ### Running Tests
 
 ```shell
-python -m unittest discover tests
+pytest tests/
 ```
 
 ## License
