@@ -1,13 +1,13 @@
 import re
 from typing import List, Optional, TextIO
 
-from gcode.gcode_command import GcodeCommand
-from gcode.gcode_validator_rules import default_validator
+from gcode.command import GcodeCommand
+from gcode.validator_rules import default_validator
 
-class GCodeParser:
+class BasicGCodeParser:
     def __init__(self, validator=None, strict_mode: bool = True):
         """
-        Initialize the GCodeParser with a validator. If no validator is provided, use the default_validator.
+        Initialize the BasicGCodeParser with a validator. If no validator is provided, use the default_validator.
 
         Args:
             validator (callable, optional): A validator function to validate G-code commands. Defaults to default_validator.
@@ -33,20 +33,31 @@ class GCodeParser:
             ValueError: If the line contains an invalid command or unknown fields.
         """
         line = line.strip()
-        if not line or line.startswith(';'):  # Ignore empty lines and comments
+        if not line:
             return None
 
+        # Split the line into command and comment parts
+        # TODO There is a bug here, due to Strings may contain ;
+        parts = line.split(';', 1)
+        command_part = parts[0].strip()
+        comment = parts[1].strip() if len(parts) > 1 else None
+
+        if not command_part:
+            return GcodeCommand(command = "", fields = {}, comment = comment)
+
         # Match the command (e.g., G1, M104, M569.2)
-        match = re.match(r'([A-Za-z])(\d+(?:\.\d+)?)', line)
+        match = re.match(r'([A-Za-z])(\d+(?:\.\d+)?)', command_part)
         if not match:
-            raise ValueError(f"Invalid G-code command: {line}")
+            raise ValueError(f"Invalid G-code command: {command_part}")
 
         command_type, command_number = match.groups()
         command_type = command_type.upper()
 
+        fields_part = command_part[len(match.group(0)):]
+
         # Extract fields starting after the command
         fields = {}
-        for field, value in re.findall(r'(?<![A-Za-z])([A-Z])([-+]?[0-9]*\.?[0-9]+|"[^"]*")', line[len(match.group(0)):]):
+        for field, value in re.findall(r'(?<![A-Za-z])([A-Z])([-+]?[0-9]*\.?[0-9]+|"[^"]*")', fields_part):
             if field in fields:
                 raise ValueError(f"Duplicate field '{field}'")
             if value == '':
@@ -60,7 +71,7 @@ class GCodeParser:
             else:
                 fields[field] = int(value)
 
-        command = GcodeCommand(command=f"{command_type}{command_number}", fields=fields)
+        command = GcodeCommand(command=f"{command_type}{command_number}", fields=fields, comment=comment)
         try:
             self.validator.validate(command)
         # Catch all error, and re-raise it with the command for better debugging
