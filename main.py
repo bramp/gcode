@@ -1,7 +1,7 @@
 
 import argparse
 
-from gcode.basic_parser import GCodeParser
+from src.basic_parser import GCodeParser
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(description="Parse and print G-code file commands line by line.")

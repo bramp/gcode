@@ -1,55 +1,123 @@
 Warning: This is a work in progress.
 
-# G-code Parser
+# Gcode-file
 
-This project is designed to parse G-code files, which are used to control CNC machines and 3D printers. The goal is to provide a simple and efficient way to read and interpret G-code commands.
-
-## Project Structure
-
-```
-gcode-parser
-├── src
-│   ├── __init__.py
-│   └── parser.py
-├── tests
-│   ├── __init__.py
-│   └── test_parser.py
-├── requirements.txt
-├── setup.py
-└── README.md
-```
+Python library for parsing G-Code, Binary G-Code files, and related metadata (thumbnails, slicer settings, etc
 
 ## Installation
 
-To install the required dependencies, run:
-
-```
-pip install -r requirements.txt
+```bash
+pip install gcode-file
 ```
 
 ## Usage
 
-To use the G-code parser, import the necessary functions or classes from the `parser` module in the `src` directory.
+### Command Line
 
-Example:
+The package includes a command-line tool to inspect gcode / bgcode files:
 
-```python
-from src.parser import parse_gcode
-
-# Your code to parse G-code files
+```bash
+bgcode path/to/your/file.bgcode
 ```
 
-## Contributing
+This will print a summary of the file's contents, including metadata, G-code preview, and thumbnail information.
 
-Contributions are welcome! Please feel free to submit a pull request or open an
-issue for any suggestions or improvements.
+### Python API
 
-### Running Tests
+```python
+from bgcode.bgcode_parser import BasicBGCodeParser
 
-```shell
+# Parse a file
+parser = BasicBGCodeParser()
+blocks = parser.parse_file_to_list("path/to/your/file.bgcode")
+
+# Iterate through blocks
+for block in blocks:
+    if block.type == BlockType.GCODE:
+        # Access G-code content
+        gcode_text = block.data()
+    elif block.type == BlockType.FILE_METADATA:
+        # Access metadata
+        metadata = block.data
+```
+
+## Features
+
+- Parses all BGCode block types:
+  - File metadata
+  - G-code
+  - Slicer metadata
+  - Printer metadata
+  - Print metadata
+  - Thumbnails
+- Supports multiple compression types:
+  - None
+  - Deflate
+  - Heatshrink (11/4 and 12/4)
+- Supports multiple G-code encodings:
+  - None
+  - MeatPack
+  - MeatPack with comments
+
+## Development
+
+```
+
+# Setup venv
+python3 -m venv venv
+
+# Activate venv
+source venv/bin/activate
+
+# Install tools
+pip install --upgrade pytest build twine
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install editable version
+pip install -e .
+
+
+# Run tests
 pytest tests/
+
+# Publish Packages
+python3 -m build
+python3 -m twine upload --repository testpypi dist/*
+
+python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps gcode
 ```
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
+```
+BSD 3-Clause License
+
+Copyright (c) 2025, Andrew Brampton
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```

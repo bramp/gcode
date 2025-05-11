@@ -9,8 +9,8 @@ functionality of the MeatPack algorithm. It tests:
 5. Edge cases and error conditions
 """
 
-import pytest
-from gcode.meatpack import MeatPacker, MeatUnpacker, compress, decompress
+import pytest # type: ignore
+from gcode_file.bgcode.meatpack import MeatPacker, MeatUnpacker, compress, decompress
 
 def test_basic_compression():
     """Test basic compression and decompression."""

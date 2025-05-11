@@ -1,8 +1,8 @@
 import re
 from typing import List, Optional, TextIO
 
-from gcode.command import GcodeCommand
-from gcode.validator_rules import default_validator
+from gcode_file.gcode.command import GcodeCommand
+from gcode_file.gcode.validator_rules import default_validator
 
 class BasicGCodeParser:
     def __init__(self, validator=None, strict_mode: bool = True):

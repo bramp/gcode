@@ -2,8 +2,8 @@
 # See https://reprap.org/wiki/G-code
 # See https://help.prusa3d.com/article/buddy-firmware-specific-g-code-commands_633112
 
-from gcode.command import GcodeCommand
-from gcode.validator import GCodeValidator
+from gcode_file.gcode.command import GcodeCommand
+from gcode_file.gcode.validator import GCodeValidator
 
 # The G-code validator instance prefers the Prusa Buddy firmware rules.
 validator = GCodeValidator()

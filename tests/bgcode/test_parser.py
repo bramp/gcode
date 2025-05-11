@@ -1,8 +1,8 @@
 import os
-import pytest
+import pytest # type: ignore
 import struct
 from io import BytesIO
-from gcode.bgcode_parser import BasicBGCodeParser, BlockType, CompressionType, ChecksumType, GCodeBlock
+from gcode_file import BasicBGCodeParser, CompressionType, ChecksumType, GCodeBlock
 
 def create_test_bgcode(blocks=None):
     """Helper function to create a test bgcode file in memory."""

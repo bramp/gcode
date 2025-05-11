@@ -1,15 +1,13 @@
 import io
-import pytest
-from typing import Generator, Any
-from gcode.command import GcodeCommand
-from gcode.parser import GCodeParser, ThumbnailCommand
+import pytest # type: ignore
+from gcode_file import GCodeParser, ThumbnailCommand
 
 @pytest.fixture
 def parser():
     """Create a parser instance for testing."""
     return GCodeParser()
 
-def test_thumbnail_without_format(parser):
+def test_thumbnail_without_format(parser: GCodeParser):
     """Test parsing a thumbnail without a specified format."""
     stream = io.StringIO("""; thumbnail begin 16x16 956
         ; iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACk0lEQVR4AVWS60/TUBjG+2cYgwEdA0
@@ -41,7 +39,7 @@ def test_thumbnail_without_format(parser):
 
     # TODO Test the content is the expected PNG data
 
-def test_thumbnail_with_format(parser):
+def test_thumbnail_with_format(parser: GCodeParser):
     """Test parsing a thumbnail without a specified format."""
     stream = io.StringIO("""; thumbnail_QOI begin 16x16 500
         ; cW9pZgAAABAAAAAQBAD/ZmZmAMP/NDQ0/8D+Y2NjhoiViH+iiJyIpYhAo4g6wgH+ZGRkk4gIBBM1Fx

@@ -1,12 +1,10 @@
 import struct
-from typing import List, Optional, BinaryIO, Iterator, Dict
+from typing import List, BinaryIO, Iterator, Dict
 from dataclasses import dataclass
 from enum import IntEnum
 import zlib
-import configparser
-from io import StringIO
 from abc import ABC
-from gcode.meatpack import decompress
+from gcode_file.bgcode.meatpack import decompress
 import heatshrink2
 
 
@@ -451,4 +449,57 @@ class BasicBGCodeParser:
         Raises:
             ValueError: If the file contains invalid data.
         """
-        return list(self.parse_file(file_path)) 
+        return list(self.parse_file(file_path))
+
+def main():
+    """
+    Main entry point for the BGCode parser.
+    Prints a summary of the BGCode file, block by block.
+    """
+    import sys
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Parse and summarize a BGCode file')
+    parser.add_argument('file', help='Path to the BGCode file to parse')
+    args = parser.parse_args()
+
+    try:
+        bgcode_parser = BasicBGCodeParser()
+        blocks = bgcode_parser.parse_file_to_list(args.file)
+        
+        print(f"\nBGCode File Summary: {args.file}")
+        print("=" * 50)
+        
+        for i, block in enumerate(blocks, 1):
+            print(f"\nBlock {i}:")
+            print(f"Type: {block.type}")
+            print(f"Compression: {block.header.compression}")
+            print(f"Size: {block.header.uncompressed_size} bytes (uncompressed)")
+            
+            if isinstance(block, MetadataBlock):
+                print("Metadata:")
+                for key, value in block.data.items():
+                    print(f"  {key}: {value}")
+            elif isinstance(block, GCodeBlock):
+                print(f"Encoding: {block.parameters.encoding}")
+                print("Preview:")
+                lines = block.data().splitlines()[:3]
+                for line in lines:
+                    print(f"  {line}")
+                if len(lines) == 3:
+                    print("  ...")
+            elif isinstance(block, ThumbnailBlock):
+                print(f"Format: {block.header.parameters.format}")
+                print(f"Dimensions: {block.header.parameters.width}x{block.header.parameters.height}")
+                print(f"Size: {len(block.data)} bytes")
+            
+            print("-" * 30)
+        
+        print(f"\nTotal blocks: {len(blocks)}")
+        
+    except Exception as e:
+        print(f"Error parsing BGCode file: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main() 

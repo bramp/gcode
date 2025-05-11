@@ -1,11 +1,64 @@
 import base64
 import io
-from typing import Any, Generator, List, Optional, TextIO
 import re
+from typing import Any, Dict, Generator, Optional
 
-from gcode.basic_parser import BasicGCodeParser
-from gcode.command import GcodeCommand
+# TODO Refactor GcodeCommand to be a base class for GcodeCommand and GcodeComment, GcodeInvalidCommand, and other types
 
+class GcodeCommand:
+    """
+    Represents a parsed G-code command.
+
+    Attributes:
+        command (str): The G-code command (e.g., G1, M104).
+        fields (Dict[str, Any]): The fields associated with the command. The
+        values may be one of int, float, str, or bool.
+        error (str, optional): If present, contains a validation error message.
+        comment (str, optional): If present, contains the comment from the line.
+    """
+    def __init__(self, command: str, fields: Dict[str, Any], comment: Optional[str] = None, error: Optional[str] = None):
+        self.command = command
+        self.fields = fields
+        self.comment = comment
+        self.error = error
+
+    def _field_repr(self, key: str, value: Any) -> str:
+        """
+        Return a string representation of a field in valid G-code notation.
+
+        Args:
+            key (str): The field key (e.g., 'X', 'Y', 'Z').
+            value (Any): The field value (int, float, str, or bool).
+
+        Returns:
+            str: The field as a string in valid G-code format.
+        """
+        if isinstance(value, bool):
+            # If the flag is false, we treat it as being unset.
+            return f"{key}{int(value)}" if value else ""
+
+        if isinstance(value, (int, float)):
+            return f"{key}{value}"
+
+        if isinstance(value, str):
+            raise NotImplementedError("String fields are not yet supported.")
+
+        return ValueError(f"Unsupported field type: {type(value)} for key: {key}")
+
+    def __repr__(self):
+        """
+        Return a string representation of the G-code command in valid G-code notation.
+
+        Returns:
+            str: The G-code command as a string in valid G-code format.
+        """
+        params_str = " ".join(self._field_repr(key, value) for key, value in self.fields.items())
+        result = f"{self.command} {params_str}".strip()
+        if self.comment:
+            result = f"{result} ;{self.comment}"
+        return result
+    
+    
 
 class ThumbnailCommand:
     """A special command that represents a thumbnail block in G-code."""
@@ -96,10 +149,12 @@ class PrusaSlicerConfigCommand:
                 # * Is the output_stream actually the format, width, and height we expect?
                 return PrusaSlicerConfigCommand(config)
 
-            key, value = parse_config_line(command.comment)
+            key, value = PrusaSlicerConfigCommand.parse_config_line(command.comment)
             config[key] = value
+
         raise ValueError("Did not find end of prusaslicer_config block")
 
+    @staticmethod
     def parse_config_line(comment: str):
         """Parse a prusaslicer_config comment into a dictionary."""
         # Split the comment into key-value pairs, e.g
@@ -107,38 +162,3 @@ class PrusaSlicerConfigCommand:
         #   before_layer_gcode = ;BEFORE_LAYER_CHANGE\nG92 E0.0\n;[layer_z]\n\n
         key, value = comment.split(' = ')
         return key, value
-
-
-class GCodeParser(BasicGCodeParser):
-    """
-    A higher-level G-code parser that extends BasicGCodeParser and provides 
-    additional processing to extract additional information that slicers 
-    place into comments.
-    """
-    def __init__(self, validator=None, strict_mode: bool = True):
-        super().__init__(validator=validator, strict_mode=strict_mode)
-
-    def parse_stream(self, stream: TextIO):
-        """
-        Parse a stream of G-code line by line and yeld each command.
-
-        Args:
-            stream (TextIO): A text stream to parse line by line.
-
-        Yields:
-            GcodeCommand: Processed G-code commands.
-        """
-        commands = super().parse_stream(stream)
-        try:
-            while True:
-                command = next(commands)
-                # Match "; thumbnail_{format} begin" lines
-                if command.comment and re.match(r"thumbnail(?:_\w+)?\s+begin", command.comment):
-                    yield ThumbnailCommand.from_stream(command, commands)
-                elif command.comment == "; prusaslicer_config = begin":
-                    yield PrusaSlicerConfigCommand.from_stream(command, commands)
-                else:
-                    yield command
-
-        except StopIteration:
-            pass

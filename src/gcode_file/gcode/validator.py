@@ -1,4 +1,4 @@
-from gcode.command import GcodeCommand
+from gcode_file.gcode.command import GcodeCommand
 
 class GCodeValidator:
     class _GCodeRule:
