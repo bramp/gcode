@@ -1,8 +1,9 @@
 import re
-from typing import List, Optional, TextIO
+from typing import Iterator, Optional, TextIO
 
 from gcode_file.gcode.command import GcodeCommand
 from gcode_file.gcode.validator_rules import default_validator
+
 
 class BasicGCodeParser:
     def __init__(self, validator=None, strict_mode: bool = True):
@@ -43,7 +44,7 @@ class BasicGCodeParser:
         comment = parts[1].strip() if len(parts) > 1 else None
 
         if not command_part:
-            return GcodeCommand(command = "", fields = {}, comment = comment)
+            return GcodeCommand(command="", fields={}, comment=comment)
 
         # Match the command (e.g., G1, M104, M569.2)
         match = re.match(r'([A-Za-z])(\d+(?:\.\d+)?)', command_part)
@@ -71,7 +72,8 @@ class BasicGCodeParser:
             else:
                 fields[field] = int(value)
 
-        command = GcodeCommand(command=f"{command_type}{command_number}", fields=fields, comment=comment)
+        command = GcodeCommand(command=f"{command_type}{command_number}",
+                               fields=fields, comment=comment)
         try:
             self.validator.validate(command)
         # Catch all error, and re-raise it with the command for better debugging
@@ -82,7 +84,7 @@ class BasicGCodeParser:
 
         return command
 
-    def parse_stream(self, stream: TextIO):
+    def parse_stream(self, stream: TextIO) -> Iterator[GcodeCommand]:
         """
         Parse a stream of G-code line by line.
 
@@ -90,7 +92,7 @@ class BasicGCodeParser:
             stream (TextIO): A text stream (e.g., file-like object or StringIO) to parse.
 
         Yields:
-            GcodeCommand: Parsed G-code command objects one at a time if to_list is False.
+            GcodeCommand: Parsed G-code command objects one at a time.
 
         Raises:
             ValueError: If a line contains an invalid command or unknown fields.
@@ -102,50 +104,3 @@ class BasicGCodeParser:
                     yield command
             except Exception as e:
                 raise ValueError(f"Error on line {line_number}: {e}") from e
-
-    def parse_stream_to_list(self, stream: TextIO) -> List[GcodeCommand]:
-        """
-        Parse a stream of G-code and return a list of GcodeCommand objects.
-
-        Args:
-            stream (TextIO): A text stream (e.g., file-like object or StringIO) to parse.
-
-        Returns:
-            List[GcodeCommand]: A list of parsed G-code command objects.
-
-        Raises:
-            ValueError: If a line contains an invalid command or unknown fields.
-        """
-        return list(self.parse_stream(stream))
-
-    def parse_file(self, file_path: str):
-        """
-        Parse a G-code file line by line in a streaming manner.
-
-        Args:
-            file_path (str): The path to the G-code file to parse.
-
-        Yields:
-            GcodeCommand: Parsed G-code command objects one at a time.
-
-        Raises:
-            ValueError: If a line contains an invalid command or unknown fields.
-        """
-        with open(file_path, 'r') as file:
-            yield from self.parse_stream(file)
-
-    def parse_file_to_list(self, file_path: str) -> List[GcodeCommand]:
-        """
-        Parse a G-code file and return a list of GcodeCommand objects.
-
-        Args:
-            file_path (str): The path to the G-code file to parse.
-
-        Returns:
-            List[GcodeCommand]: A list of parsed G-code command objects.
-
-        Raises:
-            ValueError: If a line contains an invalid command or unknown fields.
-        """
-        return list(self.parse_file(file_path))
-

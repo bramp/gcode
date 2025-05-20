@@ -1,4 +1,5 @@
 import os
+from typing import TextIO
 import pytest  # type: ignore
 from io import StringIO
 from gcode_file import BasicGCodeParser
@@ -106,10 +107,10 @@ def test_parse_line_non_strict_mode():
     assert "unsupported command" in result.error.lower()
 
 
-def _test_single_file(parser: BasicGCodeParser, file_path: str):
+def _test_single_file(parser: BasicGCodeParser, file_path: TextIO):
     try:
         found = 0
-        for command in parser.parse_file(file_path):
+        for command in parser.parse_stream(file_path):
             if command.error:
                 # We accept empty g1 commands, due to bugs in PrusaSlicer.
                 # For example: https://github.com/prusa3d/PrusaSlicer/issues/7714
@@ -131,4 +132,5 @@ def test_parse_all_fixtures(fixtures_dir):
     for filename in os.listdir(fixtures_dir):
         if filename.endswith(".gcode"):
             file_path = os.path.join(fixtures_dir, filename)
-            _test_single_file(parser, file_path)
+            with open(file_path, "r") as file:
+                _test_single_file(parser, file)

@@ -1,8 +1,9 @@
-from typing import TextIO
+from typing import Iterator, TextIO
 import re
 
 from gcode_file.gcode.basic_parser import BasicGCodeParser
-from gcode_file.gcode.command import PrusaSlicerConfigCommand, ThumbnailCommand
+from gcode_file.gcode.command import GcodeCommand, PrusaSlicerConfigCommand, ThumbnailCommand
+
 
 class GCodeParser(BasicGCodeParser):
     """
@@ -13,9 +14,9 @@ class GCodeParser(BasicGCodeParser):
     def __init__(self, validator=None, strict_mode: bool = True):
         super().__init__(validator=validator, strict_mode=strict_mode)
 
-    def parse_stream(self, stream: TextIO):
+    def parse_stream(self, stream: TextIO) -> Iterator[GcodeCommand]:
         """
-        Parse a stream of G-code line by line and yeld each command.
+        Parse a stream of G-code line by line and yield each command.
 
         Args:
             stream (TextIO): A text stream to parse line by line.

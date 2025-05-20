@@ -67,7 +67,8 @@ _CHAR_TO_CODE = {
 # Reverse lookup table for converting codes back to characters
 _CODE_TO_CHAR = {v: k for k, v in _CHAR_TO_CODE.items()}
 
-class GCodeCharIterator:
+
+class _GCodeCharIterator:
     """Iterator for G-code characters that handles filtering based on settings.
     
     This class provides a clean interface for iterating over G-code characters
@@ -127,6 +128,7 @@ class GCodeCharIterator:
         
         raise StopIteration
 
+
 class MeatPacker:
     """MeatPack compression algorithm for G-code.
     
@@ -169,7 +171,7 @@ class MeatPacker:
             return None
         return _CHAR_TO_CODE.get(char)
     
-    def _pack_data(self, data: bytes):
+    def _pack_data(self, data: Union[str, bytes]):
         """Pack input data into compressed format using the MeatPack algorithm.
         
         Processes data in pairs, packing characters into single bytes when possible.
@@ -181,8 +183,11 @@ class MeatPacker:
         Note: Modifies _buffer directly. Clear buffer before calling if needed.
         """
         # Create iterator for processing characters
-        iterator = GCodeCharIterator(data, self._omit_spaces, self._omit_comments, self._uppercase)
-        
+        iterator = _GCodeCharIterator(data,
+                                      self._omit_spaces,
+                                      self._omit_comments,
+                                      self._uppercase)
+
         while True:
             # Get two characters
             c1 = next(iterator, None)
@@ -213,7 +218,6 @@ class MeatPacker:
                 self._buffer.append(ord(c1))
                 self._buffer.append(ord(c2))
         
-    
     def compress(self, data: Union[str, bytes]) -> bytes:
         """Compress the input data using MeatPack algorithm.
         
@@ -257,6 +261,10 @@ class MeatPacker:
         # Add reset command at the end
         self._buffer.extend([0xFF, 0xFF, _RESET_ALL])
         return bytes(self._buffer)
+
+    def flush(self):
+        """Flush the internal buffer."""
+        pass
 
 
 class MeatUnpacker:
@@ -367,8 +375,15 @@ class MeatUnpacker:
         
         return bytes(result)
 
+    def flush(self):
+        """Flush the internal buffer."""
+        pass
 
-def compress(data: Union[str, bytes], omit_spaces: bool = False, omit_comments: bool = False, uppercase: bool = True) -> bytes:
+
+def compress(data: Union[str, bytes],
+             omit_spaces: bool = False,
+             omit_comments: bool = False,
+             uppercase: bool = True) -> bytes:
     """Compress data using MeatPack algorithm.
     
     This is a convenience function that creates a MeatPacker instance and
@@ -390,12 +405,16 @@ def compress(data: Union[str, bytes], omit_spaces: bool = False, omit_comments: 
         Compressed data as bytes.
     
     Example:
-        >>> compressed = compress("G1 X100 Y200 ; Comment", omit_spaces=True, omit_comments=True)
+        >>> compressed = compress("G1 X100 Y200 ; Comment",
+                                  omit_spaces=True, omit_comments=True)
         >>> decompressed = decompress(compressed)
         >>> print(decompressed.decode('ascii'))
         'G1X100Y200'
     """
-    packer = MeatPacker(omit_spaces=omit_spaces, omit_comments=omit_comments, uppercase=uppercase)
+    packer = MeatPacker(
+        omit_spaces=omit_spaces,
+        omit_comments=omit_comments,
+        uppercase=uppercase)
     return packer.compress(data)
 
 
@@ -403,7 +422,8 @@ def decompress(data: bytes) -> bytes:
     """Decompress MeatPack compressed data.
     
     This is a convenience function that creates a MeatUnpacker instance and
-    decompresses the input data. It's useful for one-off decompression operations.
+    decompresses the input data. It's useful for one-off decompression 
+    operations.
     
     Args:
         data: Compressed data as bytes. Must be valid MeatPack compressed
@@ -419,4 +439,4 @@ def decompress(data: bytes) -> bytes:
         'G1 X100 Y200'
     """
     unpacker = MeatUnpacker()
-    return unpacker.decompress(data) 
+    return unpacker.decompress(data)

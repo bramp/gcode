@@ -1,8 +1,10 @@
 import os
-import pytest # type: ignore
+import pytest  # type: ignore
 import struct
 from io import BytesIO
-from gcode_file import BasicBGCodeParser, CompressionType, ChecksumType, GCodeBlock
+from gcode_file import BasicBGCodeParser, CompressionType, ChecksumType
+from gcode_file import GCodeBlock
+
 
 def create_test_bgcode(blocks=None):
     """Helper function to create a test bgcode file in memory."""
@@ -27,10 +29,12 @@ def create_test_bgcode(blocks=None):
 
     return BytesIO(data)
 
+
 @pytest.fixture
 def parser():
     """Create a parser instance for testing."""
     return BasicBGCodeParser()
+
 
 def test_parse_real_files(parser: BasicBGCodeParser):
     """Test parsing real bgcode files from fixtures."""
@@ -41,17 +45,16 @@ def test_parse_real_files(parser: BasicBGCodeParser):
         "BenchyRules_PLA_14m.bgcode",
         "3DBenchy (5 Colours)_0.4n_0.2mm_PETG,PETG,PETG,PETG,PETG_XLIS_2h34m.bgcode"
     ]
-    
+
     for filename in test_files:
         filepath = os.path.join("tests", "fixtures", filename)
-        blocks = list()
 
-        for block in parser.parse_file(filepath):
-            blocks.append(block)
-        
+        with open(filepath, "rb") as file:
+            blocks = [block for block in parser.parse_stream(file)]
+
         # Basic validation
         assert len(blocks) > 0, f"No blocks found in {filename}"
-        
+
         # Check that we have at least one G-code block
         gcode_blocks = [b for b in blocks if isinstance(b, GCodeBlock)]
         assert len(gcode_blocks) > 0, f"No G-code blocks found in {filename}"
