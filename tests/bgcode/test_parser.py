@@ -43,7 +43,7 @@ def test_parse_real_files(parser: BasicBGCodeParser):
         "lines_0.4n_0.2mm_PETG_XLIS_57s.bgcode",
         "BonkersBenchy_PLA_8m.bgcode",
         "BenchyRules_PLA_14m.bgcode",
-        "3DBenchy (5 Colours)_0.4n_0.2mm_PETG,PETG,PETG,PETG,PETG_XLIS_2h34m.bgcode"
+        "3DBenchy (5 Colours)_0.4n_0.2mm_PETG,PETG,PETG,PETG,PETG_XLIS_2h34m.bgcode",
     ]
 
     for filename in test_files:

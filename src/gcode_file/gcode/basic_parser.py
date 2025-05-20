@@ -39,7 +39,7 @@ class BasicGCodeParser:
 
         # Split the line into command and comment parts
         # TODO There is a bug here, due to Strings may contain ;
-        parts = line.split(';', 1)
+        parts = line.split(";", 1)
         command_part = parts[0].strip()
         comment = parts[1].strip() if len(parts) > 1 else None
 
@@ -47,33 +47,36 @@ class BasicGCodeParser:
             return GcodeCommand(command="", fields={}, comment=comment)
 
         # Match the command (e.g., G1, M104, M569.2)
-        match = re.match(r'([A-Za-z])(\d+(?:\.\d+)?)', command_part)
+        match = re.match(r"([A-Za-z])(\d+(?:\.\d+)?)", command_part)
         if not match:
             raise ValueError(f"Invalid G-code command: {command_part}")
 
         command_type, command_number = match.groups()
         command_type = command_type.upper()
 
-        fields_part = command_part[len(match.group(0)):]
+        fields_part = command_part[len(match.group(0)) :]
 
         # Extract fields starting after the command
         fields = {}
-        for field, value in re.findall(r'(?<![A-Za-z])([A-Z])([-+]?[0-9]*\.?[0-9]+|"[^"]*")', fields_part):
+        for field, value in re.findall(
+            r'(?<![A-Za-z])([A-Z])([-+]?[0-9]*\.?[0-9]+|"[^"]*")', fields_part
+        ):
             if field in fields:
                 raise ValueError(f"Duplicate field '{field}'")
-            if value == '':
+            if value == "":
                 # If the field is present but has no value, treat it as a flag
                 fields[field] = True
             elif value.startswith('"') and value.endswith('"'):
                 # Handle string values
                 fields[field] = value[1:-1]  # Remove quotes
-            elif '.' in value:
+            elif "." in value:
                 fields[field] = float(value)
             else:
                 fields[field] = int(value)
 
-        command = GcodeCommand(command=f"{command_type}{command_number}",
-                               fields=fields, comment=comment)
+        command = GcodeCommand(
+            command=f"{command_type}{command_number}", fields=fields, comment=comment
+        )
         try:
             self.validator.validate(command)
         # Catch all error, and re-raise it with the command for better debugging

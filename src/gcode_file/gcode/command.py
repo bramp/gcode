@@ -5,6 +5,7 @@ from typing import Any, Dict, Generator, Optional
 
 # TODO Refactor GcodeCommand to be a base class for GcodeCommand and GcodeComment, GcodeInvalidCommand, and other types
 
+
 class GcodeCommand:
     """
     Represents a parsed G-code command.
@@ -16,7 +17,14 @@ class GcodeCommand:
         error (str, optional): If present, contains a validation error message.
         comment (str, optional): If present, contains the comment from the line.
     """
-    def __init__(self, command: str, fields: Dict[str, Any], comment: Optional[str] = None, error: Optional[str] = None):
+
+    def __init__(
+        self,
+        command: str,
+        fields: Dict[str, Any],
+        comment: Optional[str] = None,
+        error: Optional[str] = None,
+    ):
         self.command = command
         self.fields = fields
         self.comment = comment
@@ -52,16 +60,18 @@ class GcodeCommand:
         Returns:
             str: The G-code command as a string in valid G-code format.
         """
-        params_str = " ".join(self._field_repr(key, value) for key, value in self.fields.items())
+        params_str = " ".join(
+            self._field_repr(key, value) for key, value in self.fields.items()
+        )
         result = f"{self.command} {params_str}".strip()
         if self.comment:
             result = f"{result} ;{self.comment}"
         return result
-    
-    
+
 
 class ThumbnailCommand:
     """A special command that represents a thumbnail block in G-code."""
+
     def __init__(self, content: bytes, format: str, width: int, height: int, size: int):
         """
         Initialize a ThumbnailCommand with the given parameters.
@@ -81,7 +91,9 @@ class ThumbnailCommand:
 
     # TODO Improve error handling in here. If the base64 fails, or another error, it doesn't fit the erros the rest of the library returns
     @staticmethod
-    def from_stream(start: GcodeCommand, stream: Generator[GcodeCommand, Any, None]) -> 'ThumbnailCommand':
+    def from_stream(
+        start: GcodeCommand, stream: Generator[GcodeCommand, Any, None]
+    ) -> "ThumbnailCommand":
         """
         Create a ThumbnailCommand by consuming a thumbnail block from the stream.
 
@@ -121,20 +133,25 @@ class ThumbnailCommand:
             if command.comment.startswith(end):
                 # TODO We can be strict/paranoid here, and check a few things
                 # * Is the output_stream actually the format, width, and height we expect?
-                return ThumbnailCommand(output_stream.getvalue(), format or "PNG", width, height, size)
+                return ThumbnailCommand(
+                    output_stream.getvalue(), format or "PNG", width, height, size
+                )
 
-            output_stream.write( base64.b64decode(command.comment + "==") )
-        
+            output_stream.write(base64.b64decode(command.comment + "=="))
+
         raise ValueError("Did not find thumbnail block end")
 
 
 class PrusaSlicerConfigCommand:
     """A special command that represents a PrusaSlicer config block in G-code."""
+
     def __init__(self, config: dict):
         self.config = config
 
     @staticmethod
-    def from_stream(stream: Generator[GcodeCommand, Any, None]) -> 'PrusaSlicerConfigCommand':
+    def from_stream(
+        stream: Generator[GcodeCommand, Any, None],
+    ) -> "PrusaSlicerConfigCommand":
         """
         Create a PrusaSlicerConfigCommand by consuming a prusaslicer_config block from the stream.
         """
@@ -160,5 +177,5 @@ class PrusaSlicerConfigCommand:
         # Split the comment into key-value pairs, e.g
         #   arc_fitting = emit_center
         #   before_layer_gcode = ;BEFORE_LAYER_CHANGE\nG92 E0.0\n;[layer_z]\n\n
-        key, value = comment.split(' = ')
+        key, value = comment.split(" = ")
         return key, value

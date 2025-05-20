@@ -22,14 +22,17 @@ class Thumbnail:
         height (int): The height of the thumbnail image in pixels.
         data (bytes): The compressed image data of the thumbnail.
     """
+
     format: ThumbnailFormat
     width: int
     height: int
     data: bytes
 
     def __str__(self) -> str:
-        return ("Thumbnail("
-                f"format={self.format}, "
-                f"width={self.width}, height={self.height}), "
-                f"size={len(self.data)} bytes"
-                ")")
+        return (
+            "Thumbnail("
+            f"format={self.format}, "
+            f"width={self.width}, height={self.height}), "
+            f"size={len(self.data)} bytes"
+            ")"
+        )

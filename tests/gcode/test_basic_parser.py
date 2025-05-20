@@ -114,7 +114,11 @@ def _test_single_file(parser: BasicGCodeParser, file_path: TextIO):
             if command.error:
                 # We accept empty g1 commands, due to bugs in PrusaSlicer.
                 # For example: https://github.com/prusa3d/PrusaSlicer/issues/7714
-                if command.command == "G1" and command.error == "G1 requires at least one of the fields, but none were provided.":
+                if (
+                    command.command == "G1"
+                    and command.error
+                    == "G1 requires at least one of the fields, but none were provided."
+                ):
                     continue
 
                 pytest.fail(f"Failed to parse {file_path}: {command.error}")

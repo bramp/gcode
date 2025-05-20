@@ -65,6 +65,7 @@ class GCodeEncoding(IntEnum):
     def __str__(self) -> str:
         return f"{self.__class__.__name__}.{self.name}"
 
+
 @dataclass
 class FileHeader:
     magic: bytes  # Should be b"GCDE"
@@ -72,10 +73,12 @@ class FileHeader:
     checksum_type: ChecksumType
 
     def __str__(self) -> str:
-        return ("FileHeader("
-                f"magic={self.magic}, version={self.version}, "
-                f"checksum_type={self.checksum_type}"
-                ")")
+        return (
+            "FileHeader("
+            f"magic={self.magic}, version={self.version}, "
+            f"checksum_type={self.checksum_type}"
+            ")"
+        )
 
 
 @dataclass
@@ -87,23 +90,29 @@ class BlockHeader:
     compressed_size: int
 
     def __str__(self) -> str:
-        return ("BlockHeader("
-                f"type={self.type}, "
-                f"compression={self.compression}, "
-                f"uncompressed_size={self.uncompressed_size}, "
-                f"compressed_size={self.compressed_size}"
-                ")")
-    
+        return (
+            "BlockHeader("
+            f"type={self.type}, "
+            f"compression={self.compression}, "
+            f"uncompressed_size={self.uncompressed_size}, "
+            f"compressed_size={self.compressed_size}"
+            ")"
+        )
+
     @property
     def is_metadata(self) -> bool:
         """Returns True if the block is a metadata block."""
-        return self.type in (BlockType.FILE_METADATA,
-                             BlockType.PRINTER_METADATA,
-                             BlockType.PRINT_METADATA,
-                             BlockType.SLICER_METADATA)
+        return self.type in (
+            BlockType.FILE_METADATA,
+            BlockType.PRINTER_METADATA,
+            BlockType.PRINT_METADATA,
+            BlockType.SLICER_METADATA,
+        )
+
 
 class Block(ABC):
     """Base class for all block types."""
+
     def __init__(self, header: BlockHeader):
         self.header = header
 
@@ -125,8 +134,10 @@ class GCodeParameter:
 
 class GCodeBlock(Block):
     """Represents a G-code block."""
-    def __init__(self, header: BlockHeader, 
-                 parameters: GCodeParameter, raw_data: bytes):
+
+    def __init__(
+        self, header: BlockHeader, parameters: GCodeParameter, raw_data: bytes
+    ):
         super().__init__(header)
         self.parameters = parameters
         self.raw_data = raw_data
@@ -135,11 +146,13 @@ class GCodeBlock(Block):
         """Returns the G-code data as a string, decompressing if necessary."""
 
         if self.parameters.encoding == GCodeEncoding.NONE:
-            return self.raw_data.decode('utf-8')
+            return self.raw_data.decode("utf-8")
 
-        if (self.parameters.encoding == GCodeEncoding.MEATPACK or
-                self.parameters.encoding == GCodeEncoding.MEATPACK_COMMENTS):
-            return decompress(self.raw_data).decode('utf-8')
+        if (
+            self.parameters.encoding == GCodeEncoding.MEATPACK
+            or self.parameters.encoding == GCodeEncoding.MEATPACK_COMMENTS
+        ):
+            return decompress(self.raw_data).decode("utf-8")
 
         raise ValueError(f"Unsupported encoding {self.parameters.encoding}")
 
@@ -155,23 +168,28 @@ class GCodeBlock(Block):
     def __str__(self) -> str:
         if self.parameters.encoding == GCodeEncoding.NONE:
             # Show first few lines of G-code
-            lines = self.raw_data.decode('utf-8', errors='replace').splitlines()[:3]
-            preview = '\n'.join(lines)
+            lines = self.raw_data.decode("utf-8", errors="replace").splitlines()[:3]
+            preview = "\n".join(lines)
             if len(lines) == 3:
                 preview += "\n..."
-            return (f"{self.__class__.__name__}("
-                    f"size={len(self.raw_data)} bytes, "
-                    f"encoding={self.parameters.encoding}, "
-                    f"preview=\n{preview})")
-        
-        return (f"{self.__class__.__name__}("
+            return (
+                f"{self.__class__.__name__}("
                 f"size={len(self.raw_data)} bytes, "
-                f"encoding={self.parameters.encoding})")
+                f"encoding={self.parameters.encoding}, "
+                f"preview=\n{preview})"
+            )
+
+        return (
+            f"{self.__class__.__name__}("
+            f"size={len(self.raw_data)} bytes, "
+            f"encoding={self.parameters.encoding})"
+        )
 
 
 @dataclass
 class MetadataBlock(Block):
     """Base class for all metadata blocks."""
+
     header: BlockHeader
     encoding: EncodingType
     data: Dict[str, str]
@@ -180,25 +198,32 @@ class MetadataBlock(Block):
         items = [f"{k}={v}" for k, v in self.data.items()]
         return f"{self.__class__.__name__}({', '.join(items)})"
 
+
 @dataclass
 class FileMetadataBlock(MetadataBlock):
     """Represents a file metadata block."""
+
     pass
 
 
 @dataclass
 class PrinterMetadataBlock(MetadataBlock):
     """Represents a printer metadata block."""
+
     pass
+
 
 @dataclass
 class PrintMetadataBlock(MetadataBlock):
     """Represents a print metadata block."""
+
     pass
+
 
 @dataclass
 class SlicerMetadataBlock(MetadataBlock):
     """Represents a slicer metadata block."""
+
     pass
 
 
@@ -209,10 +234,13 @@ class ThumbnailParameter:
     height: int
 
     def __str__(self) -> str:
-        return ("Thumbnail("
-                f"format={self.format}, "
-                f"width={self.width}, height={self.height})"
-                ")")
+        return (
+            "Thumbnail("
+            f"format={self.format}, "
+            f"width={self.width}, height={self.height})"
+            ")"
+        )
+
 
 @dataclass
 class ThumbnailBlock(Block):
@@ -223,10 +251,12 @@ class ThumbnailBlock(Block):
     data: bytes
 
     def __str__(self) -> str:
-        return (f"{self.__class__.__name__}("
-                f"{self.parameters}, "
-                f"size={len(self.data)} bytes"
-                ")")
+        return (
+            f"{self.__class__.__name__}("
+            f"{self.parameters}, "
+            f"size={len(self.data)} bytes"
+            ")"
+        )
 
 
 class BasicBGCodeParser:
@@ -236,7 +266,9 @@ class BasicBGCodeParser:
         """
         pass
 
-    def _parse_metadata_parameters(self, file: BinaryIO, header: BlockHeader) -> EncodingType:
+    def _parse_metadata_parameters(
+        self, file: BinaryIO, header: BlockHeader
+    ) -> EncodingType:
         """
         Parse metadata block parameters from a binary file.
 
@@ -252,13 +284,15 @@ class BasicBGCodeParser:
         """
         assert header.is_metadata
 
-        encoding = EncodingType(struct.unpack('<H', file.read(2))[0])
+        encoding = EncodingType(struct.unpack("<H", file.read(2))[0])
         if encoding != EncodingType.INI:
             raise ValueError(f"Unsupported encoding type: {encoding}")
 
         return encoding
 
-    def _parse_thumbnail_parameters(self, file: BinaryIO, header: BlockHeader) -> ThumbnailParameter:
+    def _parse_thumbnail_parameters(
+        self, file: BinaryIO, header: BlockHeader
+    ) -> ThumbnailParameter:
         """
         Parse thumbnail block parameters from a binary file.
 
@@ -273,11 +307,14 @@ class BasicBGCodeParser:
             ValueError: If the block parameters are invalid.
         """
         assert header.type == BlockType.THUMBNAIL
-        format, width, height = struct.unpack('<HHH', file.read(6))
-        return ThumbnailParameter(format=ThumbnailFormat(format), 
-                                  width=width, height=height)
+        format, width, height = struct.unpack("<HHH", file.read(6))
+        return ThumbnailParameter(
+            format=ThumbnailFormat(format), width=width, height=height
+        )
 
-    def _parse_gcode_parameters(self, file: BinaryIO, header: BlockHeader) -> GCodeParameter:
+    def _parse_gcode_parameters(
+        self, file: BinaryIO, header: BlockHeader
+    ) -> GCodeParameter:
         """
         Parse G-code block parameters from a binary file.
 
@@ -292,7 +329,7 @@ class BasicBGCodeParser:
             ValueError: If the block parameters are invalid.
         """
         assert header.type == BlockType.GCODE
-        encoding = struct.unpack('<H', file.read(2))[0]
+        encoding = struct.unpack("<H", file.read(2))[0]
         return GCodeParameter(encoding=GCodeEncoding(encoding))
 
     def _parse_metadata(self, data: bytes, encoding: EncodingType) -> Dict[str, str]:
@@ -310,19 +347,19 @@ class BasicBGCodeParser:
             ValueError: If the metadata cannot be parsed.
         """
         if encoding == EncodingType.INI:
-            text = data.decode('utf-8')
+            text = data.decode("utf-8")
             result = {}
             for line in text.splitlines():
                 line = line.strip()
-                if not line or line.startswith(';'):  # Skip empty lines and comments
+                if not line or line.startswith(";"):  # Skip empty lines and comments
                     continue
                 try:
-                    key, value = line.split('=', 1)
+                    key, value = line.split("=", 1)
                     result[key.strip()] = value.strip()
                 except ValueError:
                     raise ValueError(f"Invalid metadata line: {line}")
             return result
-        
+
         raise ValueError(f"Unsupported encoding type: {encoding}")
 
     def _read_block(self, file: BinaryIO, header: BlockHeader) -> bytes:
@@ -344,21 +381,21 @@ class BasicBGCodeParser:
             raise ValueError("Invalid block data: too short")
 
         if header.parent.checksum_type == ChecksumType.CRC32:
-            checksum = struct.unpack('<I', file.read(4))[0]
+            checksum = struct.unpack("<I", file.read(4))[0]
             # TODO: Implement CRC32 verification
 
         if header.compression == CompressionType.NONE:
             return data
-        
+
         if header.compression == CompressionType.DEFLATE:
             return zlib.decompress(data)
-        
+
         if header.compression == CompressionType.HEATSHRINK_11_4:
             return heatshrink2.decompress(data, window_sz2=11, lookahead_sz2=4)
-        
+
         if header.compression == CompressionType.HEATSHRINK_12_4:
             return heatshrink2.decompress(data, window_sz2=12, lookahead_sz2=4)
-        
+
         raise ValueError(f"Unsupported block compression type: {header.compression}")
 
     def parse_stream(self, stream: BinaryIO) -> Iterator[Block]:
@@ -373,10 +410,11 @@ class BasicBGCodeParser:
 
         Raises:
             ValueError: If the stream contains invalid data.
-        """        
+        """
         if not isinstance(stream, io.IOBase):
-            raise AttributeError("stream is not a IOBase object, "
-                                 f"it is a {type(stream)}")
+            raise AttributeError(
+                "stream is not a IOBase object, " f"it is a {type(stream)}"
+            )
         if not stream.readable():
             raise AttributeError("stream is not readable")
 
@@ -413,19 +451,19 @@ class BasicBGCodeParser:
         if magic != b"GCDE":
             raise ValueError(f"Invalid magic number: {magic}")
 
-        version = struct.unpack('<I', header_data[4:8])[0]
+        version = struct.unpack("<I", header_data[4:8])[0]
         if version != 1:
             raise ValueError(f"Unsupported version: {version}")
 
-        checksum_type = ChecksumType(struct.unpack('<H', header_data[8:10])[0])
+        checksum_type = ChecksumType(struct.unpack("<H", header_data[8:10])[0])
         if checksum_type not in (ChecksumType.NONE, ChecksumType.CRC32):
             raise ValueError(f"Unsupported checksum type: {checksum_type}")
 
-        return FileHeader(magic=magic,
-                          version=version,
-                          checksum_type=checksum_type)
+        return FileHeader(magic=magic, version=version, checksum_type=checksum_type)
 
-    def _parse_block(self, stream: BinaryIO, file_header: FileHeader) -> Optional[Block]:
+    def _parse_block(
+        self, stream: BinaryIO, file_header: FileHeader
+    ) -> Optional[Block]:
         block_header = self._parse_block_header(stream, file_header)
         if block_header is None:
             # Reached the end of the file
@@ -481,23 +519,25 @@ class BasicBGCodeParser:
             return None
 
         if len(type_compression) != 4:
-            raise ValueError(f"Invalid block header: too short. Expected 4 bytes, got {len(type_compression)} bytes")
+            raise ValueError(
+                f"Invalid block header: too short. Expected 4 bytes, got {len(type_compression)} bytes"
+            )
 
-        block_type = BlockType(struct.unpack('<H', type_compression[:2])[0])
-        compression = CompressionType(struct.unpack('<H', type_compression[2:4])[0])
+        block_type = BlockType(struct.unpack("<H", type_compression[:2])[0])
+        compression = CompressionType(struct.unpack("<H", type_compression[2:4])[0])
 
-        uncompressed_size = struct.unpack('<I', file.read(4))[0]
+        uncompressed_size = struct.unpack("<I", file.read(4))[0]
         if compression == CompressionType.NONE:
             compressed_size = uncompressed_size
         else:
-            compressed_size = struct.unpack('<I', file.read(4))[0]
+            compressed_size = struct.unpack("<I", file.read(4))[0]
 
         return BlockHeader(
             parent=parent,
             type=block_type,
             compression=compression,
             uncompressed_size=uncompressed_size,
-            compressed_size=compressed_size
+            compressed_size=compressed_size,
         )
 
 
@@ -530,23 +570,23 @@ def main():
     import sys
     import argparse
 
-    parser = argparse.ArgumentParser(description='Parse and summarize a BGCode file')
-    parser.add_argument('file', help='Path to the BGCode file to parse')
+    parser = argparse.ArgumentParser(description="Parse and summarize a BGCode file")
+    parser.add_argument("file", help="Path to the BGCode file to parse")
     args = parser.parse_args()
 
     try:
         bgcode_parser = BasicBGCodeParser()
         blocks = bgcode_parser.parse_file_to_list(args.file)
-        
+
         print(f"\nBGCode File Summary: {args.file}")
         print("=" * 50)
-        
+
         for i, block in enumerate(blocks, 1):
             print(f"\nBlock {i}:")
             print(f"Type: {block.type}")
             print(f"Compression: {block.header.compression}")
             print(f"Size: {block.header.uncompressed_size} bytes (uncompressed)")
-            
+
             if isinstance(block, MetadataBlock):
                 print("Metadata:")
                 for key, value in block.data.items():

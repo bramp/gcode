@@ -11,7 +11,8 @@ def parser():
 
 def test_thumbnail_without_format(parser: GCodeParser):
     """Test parsing a thumbnail without a specified format."""
-    stream = io.StringIO("""; thumbnail begin 16x16 956
+    stream = io.StringIO(
+        """; thumbnail begin 16x16 956
         ; iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACk0lEQVR4AVWS60/TUBjG+2cYgwEdA0
         ; VgMnQMx2Xd1q27tLu0XbuuHUPjlaDBaIwENGQY75dEUNSoJERjvMcPGmM0EfWD/lOPfd9YCB+e9PS8
         ; z+8577kI8XgcoiiyEokEK5lMsgoVCiRJ4n+/7vuJFXwglUqxyJzJZFAsFpHP55FOp6EoCo+p5v
@@ -26,7 +27,8 @@ def test_thumbnail_without_format(parser: GCodeParser):
         ; 0mHMfZEsBb8B+SaZpcsG17Q/V6neWPG40Gf8lLDLECPR5KokQq+EEkWs1fkUQ1P4wCiP0Hjx3/1QGw
         ; q6gAAAAASUVORK5CYII=
         ; thumbnail end
-    """)   # noqa: E501
+    """
+    )  # noqa: E501
 
     commands = list(parser.parse_stream(stream))
     assert len(commands) == 1
@@ -44,7 +46,8 @@ def test_thumbnail_without_format(parser: GCodeParser):
 
 def test_thumbnail_with_format(parser: GCodeParser):
     """Test parsing a thumbnail without a specified format."""
-    stream = io.StringIO("""; thumbnail_QOI begin 16x16 500
+    stream = io.StringIO(
+        """; thumbnail_QOI begin 16x16 500
         ; cW9pZgAAABAAAAAQBAD/ZmZmAMP/NDQ0/8D+Y2NjhoiViH+iiJyIpYhAo4g6wgH+ZGRkk4gIBBM1Fx
         ; MmsIi2iDrAAcACiIgXExc1IsAEu4gglYg6AbyIrogENRMXEwT+iFUg/k5OTrmIIIyIlYgB/mlpaTuQ
         ; iA8EJqWIBBP+lWEtEQIaDyK8iDHAPBo8MRY8uYj+mmcym4j+RUVFwDz+jVolJhMXIqWIpIj+XkIm/p
@@ -53,7 +56,8 @@ def test_thumbnail_with_format(parser: GCodeParser):
         ; 6miMA7MD4dMS08DwspCyXAA6eIBjdAGjEAMQs4GgslFqSIPwMOKKOIADEACw8aFiUHIcADDiEOKBMA
         ; LQAaCykSMAPAPxIdLDcAAAAAAAAAAQ==
         ; thumbnail_QOI end
-    """)  # noqa: E501
+    """
+    )  # noqa: E501
 
     commands = list(parser.parse_stream(stream))
     assert len(commands) == 1

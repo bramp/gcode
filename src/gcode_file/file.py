@@ -1,10 +1,19 @@
 import io
 import itertools
 import os
-from typing import BinaryIO, Iterable, List
+from typing import BinaryIO, Iterable, List, Union
 from gcode_file.gcode.command import GcodeCommand
 from gcode_file.gcode.parser import GCodeParser
-from gcode_file.bgcode.parser import BasicBGCodeParser, FileMetadataBlock, PrintMetadataBlock, PrinterMetadataBlock, SlicerMetadataBlock, ThumbnailBlock, GCodeBlock, is_bgcode_file
+from gcode_file.bgcode.parser import (
+    BasicBGCodeParser,
+    FileMetadataBlock,
+    PrintMetadataBlock,
+    PrinterMetadataBlock,
+    SlicerMetadataBlock,
+    ThumbnailBlock,
+    GCodeBlock,
+    is_bgcode_file,
+)
 from gcode_file.types import Thumbnail
 
 
@@ -18,7 +27,7 @@ class GcodeFileBase:
     def printer_metadata(self) -> dict:
         """Metadata consumed by printer, such as printer model, nozzle diameter etc."""
         raise NotImplementedError("This method should be implemented by subclasses.")
-    
+
     @property
     def thumbnails(self) -> List[Thumbnail]:
         """Image data for thumbnail."""
@@ -41,7 +50,7 @@ class GcodeFileBase:
 
 
 class BGcodeFile(GcodeFileBase):
-    def __init__(self, file: BinaryIO | str):
+    def __init__(self, file: Union[BinaryIO, str]):
         """
         Initialize a BGcodeFile instance.
 
@@ -51,9 +60,9 @@ class BGcodeFile(GcodeFileBase):
         Raises:
             TypeError: If the provided file is neither a string/path nor a file-like object.
         """
-        
+
         if isinstance(file, (str, bytes, os.PathLike)):
-            self.file = open(file, 'rb')
+            self.file = open(file, "rb")
             self.file_owned = True
         elif hasattr(file, "read"):
             self.file = file
@@ -140,7 +149,7 @@ class BGcodeFile(GcodeFileBase):
                 format=block.parameters.format,
                 width=block.parameters.width,
                 height=block.parameters.height,
-                data=block.image_data
+                data=block.image_data,
             )
             for block in self.blocks
             if isinstance(block, ThumbnailBlock)
@@ -149,15 +158,10 @@ class BGcodeFile(GcodeFileBase):
     @property
     def commands(self) -> Iterable[GcodeCommand]:
         """G-code commands."""
-        gcode_blocks = [
-            block for block in self.blocks
-            if isinstance(block, GCodeBlock)
-        ]
+        gcode_blocks = [block for block in self.blocks if isinstance(block, GCodeBlock)]
         # TODO I'm not sure why there are multiple GCodeBlocks
         # in a single file. For now, we merge them.
-        return itertools.chain.from_iterable(
-            block.commands for block in gcode_blocks
-        )
+        return itertools.chain.from_iterable(block.commands for block in gcode_blocks)
 
 
 class GcodeFile(GcodeFileBase):
@@ -173,7 +177,7 @@ class GcodeFile(GcodeFileBase):
     def printer_metadata(self) -> dict:
         """Metadata consumed by printer, such as printer model, nozzle diameter etc."""
         raise NotImplementedError("This method should be implemented by subclasses.")
-    
+
     @property
     def thumbnails(self) -> List[Thumbnail]:
         """Image data for thumbnail."""
@@ -196,7 +200,7 @@ class GcodeFile(GcodeFileBase):
 
 
 def open_file(file_path: str) -> GcodeFileBase:
-    with open(file_path, 'rb') as stream:
+    with open(file_path, "rb") as stream:
         return open_stream(stream)
 
 

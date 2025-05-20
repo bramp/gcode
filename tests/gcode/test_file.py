@@ -8,26 +8,23 @@ def fixtures_dir() -> str:
     """Return the path to the fixtures directory."""
     return os.path.join(os.path.dirname(__file__), "..", "fixtures")
 
+
 def test_file_factory_bgcode(fixtures_dir):
-    file_path = os.path.join(fixtures_dir, 
-                             "lines_0.4n_0.2mm_PETG_XLIS_57s.bgcode")
+    file_path = os.path.join(fixtures_dir, "lines_0.4n_0.2mm_PETG_XLIS_57s.bgcode")
     file_instance = open_file(file_path)
     assert isinstance(file_instance, BGcodeFile)
 
 
 def test_file_factory_gcode(fixtures_dir):
-    file_path = os.path.join(fixtures_dir, 
-                             "lines_0.4n_0.2mm_PETG_XLIS_57s.gcode")
+    file_path = os.path.join(fixtures_dir, "lines_0.4n_0.2mm_PETG_XLIS_57s.gcode")
     file_instance = open_file(file_path)
     assert isinstance(file_instance, GcodeFile)
-    
+
 
 def test_bgcode_file_methods(fixtures_dir):
-    file_path = os.path.join(fixtures_dir, 
-                             "lines_0.4n_0.2mm_PETG_XLIS_57s.bgcode")
+    file_path = os.path.join(fixtures_dir, "lines_0.4n_0.2mm_PETG_XLIS_57s.bgcode")
 
     with BGcodeFile(file_path) as file:
-        assert isinstance(file, BGcodeFile)
         assert file.file_metadata is not None
         assert file.printer_metadata is not None
         assert file.thumbnails is not None

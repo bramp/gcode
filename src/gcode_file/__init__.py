@@ -16,7 +16,10 @@ and Binary G-Code (BGCode) files used by modern 3D printers. It supports:
 # Basic G-Code Parser Components
 from .gcode.basic_parser import BasicGCodeParser  # Low-level G-Code parsing
 from .gcode.parser import GCodeParser  # High-level G-Code parsing
-from .gcode.command import GcodeCommand, ThumbnailCommand  # G-Code command representation
+from .gcode.command import (
+    GcodeCommand,
+    ThumbnailCommand,
+)  # G-Code command representation
 
 # G-Code Validation Components
 from .gcode.validator import GCodeValidator  # G-Code validation engine
@@ -25,7 +28,6 @@ from .gcode.validator import GCodeValidator  # G-Code validation engine
 from .bgcode.parser import (
     # Core parser
     BasicBGCodeParser,
-    
     # Enums
     BlockType,  # Types of blocks in BGCode files
     CompressionType,  # Supported compression methods
@@ -33,13 +35,11 @@ from .bgcode.parser import (
     EncodingType,  # Metadata encoding types
     ThumbnailFormat,  # Supported thumbnail formats
     GCodeEncoding,  # G-Code encoding methods
-    
     # Headers and Parameters
     FileHeader,  # BGCode file header
     BlockHeader,  # Block header information
     GCodeParameter,  # G-Code block parameters
     ThumbnailParameter,  # Thumbnail block parameters
-    
     # Block Types
     Block,  # Base block class
     MetadataBlock,  # Base metadata block
@@ -57,14 +57,11 @@ __all__ = [
     # Basic G-Code Parser
     "BasicGCodeParser",  # Low-level G-Code parsing
     "GCodeParser",  # High-level G-Code parsing
-    
     "GcodeCommand",  # G-Code command representation
     "ThumbnailCommand",  # Thumbnail command representation
-    
     # Validator
     "GCodeValidator",  # G-Code validation engine
     "GCodeValidatorRules",  # Validation rule definitions
-    
     # Binary G-Code Parser
     "BasicBGCodeParser",  # Core BGCode parser
     "BlockType",  # Types of blocks in BGCode files

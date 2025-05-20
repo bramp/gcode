@@ -1,5 +1,6 @@
 from gcode_file.gcode.command import GcodeCommand
 
+
 class GCodeValidator:
     class _GCodeRule:
         """
@@ -12,6 +13,7 @@ class GCodeValidator:
                                to the command. Each function should accept a `GcodeCommand`
                                object and raise a `ValueError` if validation fails.
         """
+
         def __init__(self, fields: dict, custom_rules=None):
             self.fields = fields
             self.custom_rules = custom_rules or []
@@ -35,7 +37,7 @@ class GCodeValidator:
             raise TypeError(f"Command {command} must be a string")
         if not isinstance(fields, dict):
             raise TypeError(f"Fields {fields} must be a dictionary")
-        
+
         # Convert single rule to list if needed
         custom_rules = []
         if custom_rule is not None:
@@ -47,7 +49,9 @@ class GCodeValidator:
                         raise TypeError(f"Custom rule {rule} must be a callable")
                 custom_rules = custom_rule
             else:
-                raise TypeError(f"Custom rule {custom_rule} must be a callable or list of callables")
+                raise TypeError(
+                    f"Custom rule {custom_rule} must be a callable or list of callables"
+                )
 
         self.rules[command] = self._GCodeRule(fields, custom_rules)
 
@@ -70,7 +74,9 @@ class GCodeValidator:
             if field in rule.fields:
                 expected_type = rule.fields[field]
                 if not self._is_valid_type(value, expected_type):
-                    raise ValueError(f"{command.command} field {field} must be of type {self._type_name(expected_type)} found {value}")
+                    raise ValueError(
+                        f"{command.command} field {field} must be of type {self._type_name(expected_type)} found {value}"
+                    )
 
             elif field not in rule.fields:
                 raise ValueError(f"{command.command} has unsupported field: {field}")
@@ -116,5 +122,6 @@ class NoValidator:
             command: The G-code command to validate.
         """
         pass
+
 
 no_validator = NoValidator()
